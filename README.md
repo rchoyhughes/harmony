@@ -10,7 +10,7 @@ I accidentally double-booked myself, again.
 
 Not because I didn't care, but because I live in chaos.
 
-Texts, links, threads, flights, emails, tickets. Half-formed plans. All commitments, nothing actionable.
+Texts, links, threads, flights, emails, tickets, half-formed plans. All commitments, nothing actionable.
 
 A close friend felt like an afterthought because of my chaos. My best friend told me it was too much of a commitment to organize her chaos, that she felt shame when her plans slipped through the cracks.
 
