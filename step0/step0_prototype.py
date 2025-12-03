@@ -88,6 +88,26 @@ SYSTEM_PROMPT = dedent(
     - Mirror fuzzy phrasing (“next Tuesday”, “around 7”, “this weekend”) in datetime_text.
     - Confidence reflects how certain you feel about the entire suggestion.
 
+    Input source rules:
+    - The user message will always begin with a line like "Source type: text" or
+      "Source type: ocr".
+    - "text" means the content was provided directly by the user as plain text.
+    - "ocr" means the content was extracted from a screenshot or image via OCR.
+    - When Source type is "ocr", be especially cautious about lines that look
+      like chat app metadata (timestamps, delivery labels, etc.). These may be
+      UI artifacts rather than actual event details.
+
+    Event title rules:
+    - The event title must be short, neutral, and calendar-friendly.
+    - Avoid long descriptive phrases or full-sentence summaries.
+    - If the plan is casual or home-based (e.g., "come over and hang out", "making sandwiches and chilling", "putting up Christmas"), create a concise title such as:
+      - "Hang out at Victor's"
+      - "Visit Victor's place"
+      - "Christmas decorating at Victor's"
+    - Do NOT include incidental details (like food prep or side activities) unless they define the purpose of the event (e.g. "Dinner with Tim").
+    - If the location is implied to be someone’s home, titles may reflect that (e.g., "Hangout at Victor's").
+    - If no clear purpose is stated, use a generic format such as "Hangout with <names>".
+
     Date/time rules:
     - If the text provides a clear date AND time (including relative forms like
       "tomorrow at 7", "Friday at 6pm"), set date_iso to the resolved date
@@ -110,6 +130,12 @@ SYSTEM_PROMPT = dedent(
       the event start time. Treat it as a constraint that can be mentioned in
       notes, time_text, or follow_up_actions, but leave time_iso null unless
       there is a clear event start time.
+    - Ignore UI timestamps (such as chat app metadata like "Sunday 4:32PM", message
+      timestamps, or delivery indicators) unless the conversational text explicitly
+      refers to them as part of the plan (e.g. "let's meet at 4:32PM Sunday"). When
+      Source type is "ocr", treat any standalone day+time line as UI metadata and
+      do NOT use it for date_iso or time_iso. When in doubt, leave time_iso null
+      and mention the timestamp only in notes if needed.
 
     Event existence:
     - If you cannot find a coherent, real plan or event, set event_title to null,
@@ -138,13 +164,13 @@ SYSTEM_PROMPT = dedent(
       "Invitation to a concert on December 5; time not specified.").
     - You do NOT know which participant is the app "user" or who is speaking.
       Avoid using first- or second-person language such as "I", "me", "we",
-      "you", or "user" in notes or follow_up_actions. Instead, use neutral
-      phrasing like "one person invited the other", "the conversation suggests
-      someone plans to attend with friends", or "an invitation was extended to Tim".
-    - When it is ambiguous who is speaking or who invited whom, do not refer
-      to a “speaker” or a specific named inviter. Prefer fully neutral
-      descriptions of the situation (e.g. "an invitation was extended to Tim
-      to join a group at the concert").
+      "you", or "user" in notes or follow_up_actions.
+    - When invitations or plans are mentioned, do NOT state or imply who invited
+      whom or who the invitation is directed to. Do not use phrases like
+      "X invited Y" or "an invitation was extended to Tim". Instead, describe
+      the situation in fully neutral terms, such as "there is an invitation to
+      attend a concert involving Tim and a group of friends" or "the
+      conversation discusses going to the event together".
     - follow_up_actions should be an array (possibly empty), never null.
       Each action should be a small, concrete next step (e.g. "Confirm the
       exact start time", "Check if the invitee is still free that evening").
@@ -175,8 +201,12 @@ class HarmonyStepZero:
         self.client = OpenAI(api_key=self.api_key)
         self.model = model
 
-    def run_text_pipeline(self, text: str) -> Dict[str, Any]:
-        """Send raw text to the LLM and return structured event JSON."""
+    def run_text_pipeline(self, text: str, source_type: str = "text") -> Dict[str, Any]:
+        """Send raw text to the LLM and return structured event JSON.
+
+        source_type is either "text" (direct user text) or "ocr" (text extracted
+        from an image screenshot).
+        """
         if not text or not text.strip():
             raise ValueError("Cannot parse an empty text snippet.")
 
@@ -186,6 +216,8 @@ class HarmonyStepZero:
                 "role": "user",
                 "content": dedent(
                     f"""
+                    Source type: {source_type}
+
                     Source message:
                     \"\"\"{text.strip()}\"\"\"
 
@@ -212,7 +244,7 @@ class HarmonyStepZero:
         structured parsing pipeline.
         """
         ocr_text = self.extract_text_from_image(image_path)
-        structured_event = self.run_text_pipeline(ocr_text)
+        structured_event = self.run_text_pipeline(ocr_text, source_type="ocr")
 
         print("🔍 OCR text:", file=sys.stderr)
         print(ocr_text, file=sys.stderr)
