@@ -6,11 +6,11 @@
 
 It began with a mistake. One I didn't mean to make, but one that hurt someone I care about, regardless of my intention.
 
-I accidentally double-booked myself, *again*.
+I accidentally double-booked myself, again.
 
 Not because I didn't care, but because I live in chaos.
 
-Texts. Links. Threads. Flights. Emails. Tickets. Half-formed plans. All commitments, nothing actionable.
+Texts, links, threads, flights, emails, tickets. Half-formed plans. All commitments, nothing actionable.
 
 A close friend felt like an afterthought because of my chaos. My best friend told me it was too much of a commitment to organize her chaos, that she felt shame when her plans slipped through the cracks.
 
@@ -28,13 +28,13 @@ Reduce the friction required to show up for the people we love.
 
 ## What Harmony will do
 
-Harmony is not a calendar, nor a productivity system, nor a life coach. It's something much simpler.
+Harmony is not a calendar, a productivity system, or a life coach. It's something much simpler.
 
 **Harmony takes the disorganized threads of being human and weaves them into something clear.**
 
-- Screenshot of a text saying “dinner next Thursday around 7?”
+- A screenshot of a text saying “dinner next Tuesday around 7?”
 
-- Screenshot of an email with concert info
+- A screenshot of an email with concert info
 
 - A picture of a flyer posted in a group chat
 
@@ -60,7 +60,7 @@ Confirm or edit it with one tap, and add it to your calendar. **No friction, no 
 
 3. Harmony respects privacy.
 
-    Screenshots never leave the device. Only the relevant text is sent to be parsed.
+    Screenshots never leave the device. Only the relevant text is sent to be parsed, never the image.
 
 4. Harmony captures now and clarifies later.
 
@@ -68,9 +68,9 @@ Confirm or edit it with one tap, and add it to your calendar. **No friction, no 
 
 5. Harmony embraces fuzziness.
 
-    "Next Thursday." "7-ish?" "After I land." Humans do not live in rigid blocks of time, and Harmony understands this.
+    "Next Thursday." "7-ish?" "After I land." We do not live in rigid blocks of time, and Harmony understands this.
 
-6. Harmony is a tool, not a coach.
+6. Harmony is a tool, not an authority.
 
     Harmony does not try to be a figure of authority, a life coach, an assistant, or a friend. It just helps.
 
@@ -107,8 +107,6 @@ Harmony is tiny, simple, helpful, and human.
 - Local notifications to confirm/add events
 
 - EventKit to write events to the user’s calendar
-
-This will evolve over time, but Harmony's soul will remain this intake pipeline.
 
 ## Roadmap
 
