@@ -29,6 +29,13 @@ from pathlib import Path
 from textwrap import dedent
 from typing import Any, Dict, Iterable, Optional
 
+# Optional EasyOCR support
+try:
+    import easyocr  # type: ignore
+    EASYOCR_AVAILABLE = True
+except Exception:
+    EASYOCR_AVAILABLE = False
+
 from datetime import datetime
 from dotenv import load_dotenv  # type: ignore[import]
 from openai import OpenAI  # type: ignore[import]
@@ -281,6 +288,23 @@ class HarmonyStepZero:
         return cleaned
 
     @staticmethod
+    def extract_text_with_easyocr(image_path: Path) -> str:
+        """Use EasyOCR to extract text if available."""
+        if not EASYOCR_AVAILABLE:
+            raise RuntimeError("EasyOCR is not installed. Run `pip install easyocr`.")
+
+        expanded_path = Path(image_path).expanduser().resolve()
+        if not expanded_path.exists():
+            raise FileNotFoundError(f"Image not found: {expanded_path}")
+
+        reader = easyocr.Reader(['en'], gpu=False)
+        result = reader.readtext(str(expanded_path), detail=0)
+        cleaned = "\n".join(line.strip() for line in result if line.strip())
+        if not cleaned:
+            raise RuntimeError("EasyOCR returned no text. Try a clearer screenshot.")
+        return cleaned
+
+    @staticmethod
     def _response_to_json(response: Any) -> Dict[str, Any]:
         """Extract and parse JSON from ChatCompletion response."""
         raw_text = HarmonyStepZero._extract_output_text(response)
@@ -351,6 +375,21 @@ def build_cli() -> argparse.ArgumentParser:
         help="Override the OpenAI model (default: gpt-4.1-mini).",
     )
 
+    easyocr_parser = subparsers.add_parser(
+        "easyocr", help="Use EasyOCR to extract text from the image instead of Tesseract."
+    )
+    easyocr_parser.add_argument(
+        "image_path",
+        nargs="?",
+        type=Path,
+        help="Path to the screenshot. If omitted, prompts interactively.",
+    )
+    easyocr_parser.add_argument(
+        "--model",
+        default="gpt-4.1-mini",
+        help="Override the OpenAI model (default: gpt-4.1-mini).",
+    )
+
     return parser
 
 
@@ -387,6 +426,18 @@ def main(argv: Optional[list[str]] = None) -> None:
             raw_path = raw_path.strip("'\u2019\u2018\"\u201c\u201d")
 
             image_path_arg = Path(raw_path)
+    elif args.command == "easyocr":
+        if args.image_path is not None:
+            image_path_arg = args.image_path
+        else:
+            try:
+                raw_path = input("Enter path to screenshot image (EasyOCR): ").strip()
+            except EOFError:
+                raise ValueError("No image path provided.")
+            if not raw_path:
+                raise ValueError("No image path provided.")
+            raw_path = raw_path.strip("'\u2019\u2018\"\u201c\u201d")
+            image_path_arg = Path(raw_path)
 
     try:
         harmony = HarmonyStepZero(model=args.model)
@@ -394,7 +445,15 @@ def main(argv: Optional[list[str]] = None) -> None:
             result = harmony.run_text_pipeline(message_text)
         else:
             assert image_path_arg is not None
-            result = harmony.run_image_pipeline(image_path_arg)
+            if args.command == "easyocr":
+                ocr_text = HarmonyStepZero.extract_text_with_easyocr(image_path_arg)
+                # Mirror Tesseract logging: show raw OCR output
+                print("🔍 OCR text:", file=sys.stderr)
+                print(ocr_text, file=sys.stderr)
+                structured = harmony.run_text_pipeline(ocr_text, source_type="ocr")
+                result = {"ocr_text": ocr_text, "event": structured}
+            else:
+                result = harmony.run_image_pipeline(image_path_arg)
         print("✅ Parsed result:")
         print(json.dumps(result, indent=2))
     except Exception as exc:  # pragma: no cover - CLI convenience

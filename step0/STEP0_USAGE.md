@@ -56,6 +56,11 @@ Provide an image path directly:
 ```bash
 python step0_prototype.py image /absolute/path/to/imessage_screenshot.png
 ```
+You can also use EasyOCR instead of Tesseract by calling the `easyocr` command:
+
+```bash
+python step0_prototype.py easyocr /absolute/path/to/imessage_screenshot.png
+```
 
 Or omit the path and you will be prompted interactively:
 
@@ -65,9 +70,17 @@ Enter path to screenshot image:
 > /Users/you/Desktop/imessage.png
 ```
 
+Or interactively with EasyOCR:
+
+```bash
+python step0_prototype.py easyocr
+Enter path to screenshot image (EasyOCR):
+> /Users/you/Desktop/imessage.png
+```
+
 The script will then:
 
-1. Run OCR via pytesseract to extract the text.
+1. Run OCR using Tesseract (default) or EasyOCR (if the `easyocr` command was used).
 2. Parse the extracted text through the GPT-4.1-mini pipeline.
 3. Output both the OCR text and the structured event JSON.
 
@@ -75,6 +88,7 @@ The script will then:
 
 - **Missing API key:** make sure `.env` exists and contains `OPENAI_API_KEY`.
 - **Tesseract not found:** install it and ensure the `tesseract` binary is on your PATH (or set `TESSERACT_CMD`).
+- **EasyOCR not found:** install it with `pip install easyocr` or use the default `image` command which relies on Tesseract.
 - **Empty OCR text:** try a clearer screenshot or increase contrast before rerunning.
 
 That’s the entire Phase 0 flow. No UI, no iOS, just the intake logic we’ll embed later.***
