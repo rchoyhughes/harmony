@@ -112,32 +112,27 @@ class HarmonyStepZero:
         if not text or not text.strip():
             raise ValueError("Cannot parse an empty text snippet.")
 
-        payload = [
+        messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": dedent(
-                            f"""
-                            Source message:
-                            \"\"\"{text.strip()}\"\"\"
+                "content": dedent(
+                    f"""
+                    Source message:
+                    \"\"\"{text.strip()}\"\"\"
 
-                            Today's date: {today}
-                            Assume the user is in the timezone: {TIMEZONE}.
+                    Today's date: {today}
+                    Assume the user is in the timezone: {TIMEZONE}.
 
-                            Please respond with the JSON object now, following the JSON structure exactly.
-                            """
-                        ).strip(),
-                    }
-                ],
+                    Please respond with the JSON object now, following the JSON structure exactly.
+                    """
+                ).strip(),
             },
         ]
 
-        response = self.client.responses.create(
+        response = self.client.chat.completions.create(
             model=self.model,
-            input=payload,
+            messages=messages,
             response_format={"type": "json_object"},
             temperature=0.2,
         )
@@ -187,7 +182,7 @@ class HarmonyStepZero:
 
     @staticmethod
     def _response_to_json(response: Any) -> Dict[str, Any]:
-        """Normalize OpenAI Responses output (or Chat Completions fallback) to JSON."""
+        """Extract and parse JSON from ChatCompletion response."""
         raw_text = HarmonyStepZero._extract_output_text(response)
         try:
             return json.loads(raw_text)
@@ -199,52 +194,22 @@ class HarmonyStepZero:
     @staticmethod
     def _extract_output_text(response: Any) -> str:
         """
-        Robustly pull the first text block out of a Responses or ChatCompletion
-        response, so we can parse it as JSON.
+        Extract text content from a ChatCompletion response.
         """
-        output = getattr(response, "output", None)
-        if output:
-            text_chunks = []
-            for item in output:
-                item_type = getattr(item, "type", None) or item.get("type")
-                if item_type != "output_text":
-                    continue
-                content = getattr(item, "content", None) or item.get("content", [])
-                for chunk in content:
-                    chunk_type = getattr(chunk, "type", None) or chunk.get("type")
-                    if chunk_type != "text":
-                        continue
-                    chunk_text = getattr(chunk, "text", None) or chunk.get("text", {})
-                    value = getattr(chunk_text, "value", None) or chunk_text.get("value")
-                    if value:
-                        text_chunks.append(value)
-            if text_chunks:
-                return "".join(text_chunks)
-
-        # Fallback: chat.completions compatibility
         choices = getattr(response, "choices", None)
-        if choices:
+        if choices and len(choices) > 0:
             first_choice = choices[0]
-            message = getattr(first_choice, "message", None) or first_choice.get(
-                "message"
-            )
+            message = getattr(first_choice, "message", None)
             if message:
-                content = getattr(message, "content", None) or message.get("content")
+                content = getattr(message, "content", None)
                 if isinstance(content, str):
                     return content
-                if isinstance(content, Iterable):
+                if isinstance(content, Iterable) and not isinstance(content, str):
                     chunks: list[str] = []
                     for part in content:
-                        if not part:
-                            continue
                         if isinstance(part, str):
                             chunks.append(part)
-                            continue
-                        text_attr = getattr(part, "text", None)
-                        if text_attr:
-                            chunks.append(text_attr)
-                            continue
-                        if isinstance(part, dict):
+                        elif isinstance(part, dict):
                             chunks.append(part.get("text", ""))
                     if chunks:
                         return "".join(chunks)

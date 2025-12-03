@@ -2,10 +2,20 @@
 
 This prototype shows the end-to-end intake pipeline: raw text or a screenshot in, structured JSON out. Follow the steps below to try it yourself.
 
-## 1. Install requirements
+## 1. Set up the virtual environment
+
+A Python virtual environment should be set up in `step0/venv/`. If it doesn't exist, create it:
 
 ```bash
 cd /Users/rchoyhughes/projects/harmony/step0
+python3 -m venv venv
+```
+
+Then activate it and install dependencies:
+
+```bash
+source venv/bin/activate  # On macOS/Linux
+# or: venv\Scripts\activate  # On Windows
 pip install -r requirements.txt
 ```
 
@@ -23,26 +33,42 @@ Create `/Users/rchoyhughes/projects/harmony/.env` with:
 OPENAI_API_KEY=sk-...
 ```
 
-## 3. Parse a raw text message
+## 3. Parse a raw text message (inline or interactive)
+
+You can pass text directly:
 
 ```bash
-cd /Users/rchoyhughes/projects/harmony/step0
 python step0_prototype.py text "Tim: Wanna do dinner at 7 next Tuesday at Garden Carver?"
 ```
 
-The script prints structured JSON describing the tentative event (title, fuzzy time window, location, participants, notes, follow-ups).
-
-## 4. Parse a screenshot
+Or run it with no text to enter it interactively:
 
 ```bash
-cd /Users/rchoyhughes/projects/harmony/step0
+python step0_prototype.py text
+Enter text to parse:
+> Tim: Wanna do dinner at 7 next Tuesday at Garden Carver?
+```
+
+## 4. Parse a screenshot (inline or interactive)
+
+Provide an image path directly:
+
+```bash
 python step0_prototype.py image /absolute/path/to/imessage_screenshot.png
 ```
 
-The script will:
+Or omit the path and you will be prompted interactively:
 
-1. Run OCR via pytesseract to extract the conversation text.
-2. Send the text through the same GPT-4.1-mini parsing pipeline.
+```bash
+python step0_prototype.py image
+Enter path to screenshot image:
+> /Users/you/Desktop/imessage.png
+```
+
+The script will then:
+
+1. Run OCR via pytesseract to extract the text.
+2. Parse the extracted text through the GPT-4.1-mini pipeline.
 3. Output both the OCR text and the structured event JSON.
 
 ## 5. Troubleshooting
@@ -52,4 +78,3 @@ The script will:
 - **Empty OCR text:** try a clearer screenshot or increase contrast before rerunning.
 
 That’s the entire Phase 0 flow—no UI, no iOS, just the intake logic we’ll embed later.***
-
