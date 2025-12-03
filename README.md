@@ -12,7 +12,7 @@ Not because I didn't care, but because I live in chaos.
 
 Texts. Links. Threads. Flights. Emails. Tickets. Half-formed plans. All commitments, nothing actionable.
 
-A close friend felt like an afterthought because of my chaos. My best friend told me it was too much of a commitment to organize her chaos, that she felt shame of her plans slipping through the cracks.
+A close friend felt like an afterthought because of my chaos. My best friend told me it was too much of a commitment to organize her chaos, that she felt shame when her plans slipped through the cracks.
 
 **Chaos ends here.**
 
@@ -22,7 +22,7 @@ Harmony is a project meant to fight the overwhelm, the friction, the shame in wa
 
 Bring an end to chaos, gently.
 
-Empower those living with guilt with capability.
+Empower those living with guilt to feel capable.
 
 Reduce the friction required to show up for the people we love.
 
@@ -60,7 +60,7 @@ Confirm or edit it with one tap, and add it to your calendar. **No friction, no 
 
 3. Harmony respects privacy.
 
-    Screenshots do not leave the device. Only the relevant text is sent to be parsed.
+    Screenshots never leave the device. Only the relevant text is sent to be parsed.
 
 4. Harmony captures now and clarifies later.
 
