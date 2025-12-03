@@ -246,12 +246,11 @@ class HarmonyStepZero:
         )
         return self._response_to_json(response)
 
-    def run_image_pipeline(self, image_path: Path) -> Dict[str, Any]:
+    def run_tesseract_pipeline(self, image_path: Path) -> Dict[str, Any]:
         """
-        Extract text from an image (screenshot, photo, etc.) and run the
-        structured parsing pipeline.
+        Extract text from an image using Tesseract OCR and run the structured parsing pipeline.
         """
-        ocr_text = self.extract_text_from_image(image_path)
+        ocr_text = self.extract_text_with_tesseract(image_path)
         structured_event = self.run_text_pipeline(ocr_text, source_type="ocr")
 
         print("🔍 OCR text:", file=sys.stderr)
@@ -263,8 +262,8 @@ class HarmonyStepZero:
         }
 
     @staticmethod
-    def extract_text_from_image(image_path: Path) -> str:
-        """Use pytesseract to grab text from the provided screenshot."""
+    def extract_text_with_tesseract(image_path: Path) -> str:
+        """Use pytesseract (Tesseract OCR) to grab text from the provided screenshot."""
         expanded_path = Path(image_path).expanduser().resolve()
         if not expanded_path.exists():
             raise FileNotFoundError(f"Image not found: {expanded_path}")
@@ -454,7 +453,7 @@ def main(argv: Optional[list[str]] = None) -> None:
                 structured = harmony.run_text_pipeline(ocr_text, source_type="ocr")
                 result = {"ocr_text": ocr_text, "event": structured}
             elif args.command == "tesseract":
-                result = harmony.run_image_pipeline(image_path_arg)
+                result = harmony.run_tesseract_pipeline(image_path_arg)
         print("✅ Parsed result:")
         print(json.dumps(result, indent=2))
     except Exception as exc:  # pragma: no cover - CLI convenience
