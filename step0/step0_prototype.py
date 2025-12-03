@@ -10,7 +10,7 @@ Capabilities:
 
 Usage:
     python step0_prototype.py text "Tim: Wanna do dinner at 7 next Tuesday?"
-    python step0_prototype.py image /path/to/imessage_screenshot.png
+    python step0_prototype.py tesseract /path/to/imessage_screenshot.png
     python step0_prototype.py easyocr /path/to/imessage_screenshot.png
 
 Prereqs:
