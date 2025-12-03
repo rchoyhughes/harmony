@@ -1,10 +1,10 @@
 # Harmony Phase 0 Usage
 
-This prototype shows the end-to-end intake pipeline: raw text or a screenshot in, structured JSON out. Follow the steps below to try it yourself.
+This prototype demonstrates Harmony’s intake pipeline: raw text or a screenshot goes in, structured event JSON comes out. Follow these steps to try it out.
 
 ## 1. Set up the virtual environment
 
-A Python virtual environment should be set up in `step0/venv/`. If it doesn't exist, create it:
+Create and activate a Python virtual environment:
 
 ```bash
 cd /Users/[path-to-projects]/harmony/step0
@@ -33,9 +33,11 @@ Create `/Users/rchoyhughes/projects/harmony/.env` with:
 OPENAI_API_KEY=sk-...
 ```
 
+(This key is required for the LLM parsing step.)
+
 ## 3. Parse a raw text message (inline or interactive)
 
-You can pass text directly:
+You can parse text either by passing it inline or by entering it interactively:
 
 ```bash
 python step0_prototype.py text "Tim: Wanna do dinner at 7 next Tuesday at Garden Carver?"
@@ -51,22 +53,30 @@ Enter text to parse:
 
 ## 4. Parse a screenshot (inline or interactive)
 
-Provide an image path directly:
+To parse a screenshot, choose one of Harmony’s OCR engines:
+
+- **Tesseract (`tesseract`)** — lightweight, good for clean screenshots.
+- **EasyOCR (`easyocr`)** — deep‑learning based, stronger on noisy or dark‑mode screenshots.
+
+Both produce text that Harmony then parses into structured events.
+
+**Tesseract example:**
 
 ```bash
-python step0_prototype.py image /absolute/path/to/imessage_screenshot.png
+python step0_prototype.py tesseract /absolute/path/to/imessage_screenshot.png
 ```
-You can also use EasyOCR instead of Tesseract by calling the `easyocr` command:
+
+**EasyOCR example:**
 
 ```bash
 python step0_prototype.py easyocr /absolute/path/to/imessage_screenshot.png
 ```
 
-Or omit the path and you will be prompted interactively:
+**Interactive mode:**
 
 ```bash
-python step0_prototype.py image
-Enter path to screenshot image:
+python step0_prototype.py tesseract
+Enter path to screenshot image (Tesseract):
 > /Users/you/Desktop/imessage.png
 ```
 
@@ -78,17 +88,16 @@ Enter path to screenshot image (EasyOCR):
 > /Users/you/Desktop/imessage.png
 ```
 
-The script will then:
-
-1. Run OCR using Tesseract (default) or EasyOCR (if the `easyocr` command was used).
-2. Parse the extracted text through the GPT-4.1-mini pipeline.
-3. Output both the OCR text and the structured event JSON.
+After OCR completes, Harmony will:
+  1. Extract text from the screenshot.
+  2. Parse the text using the GPT‑4.1‑mini pipeline.
+  3. Output the OCR text and structured event JSON.
 
 ## 5. Troubleshooting
 
-- **Missing API key:** make sure `.env` exists and contains `OPENAI_API_KEY`.
-- **Tesseract not found:** install it and ensure the `tesseract` binary is on your PATH (or set `TESSERACT_CMD`).
-- **EasyOCR not found:** install it with `pip install easyocr` or use the default `image` command which relies on Tesseract.
-- **Empty OCR text:** try a clearer screenshot or increase contrast before rerunning.
+- **Missing API key:** ensure `.env` contains `OPENAI_API_KEY`.
+- **Tesseract missing:** install via Homebrew or ensure the `tesseract` binary is on your PATH.
+- **EasyOCR missing:** install with `pip install easyocr`.
+- **Empty OCR text:** try a clearer screenshot or adjust contrast.
 
-That’s the entire Phase 0 flow. No UI, no iOS, just the intake logic we’ll embed later.***
+That’s the entire Phase 0 flow. No UI, no iOS, just the intake logic we’ll embed later.

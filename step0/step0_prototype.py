@@ -11,6 +11,7 @@ Capabilities:
 Usage:
     python step0_prototype.py text "Tim: Wanna do dinner at 7 next Tuesday?"
     python step0_prototype.py image /path/to/imessage_screenshot.png
+    python step0_prototype.py easyocr /path/to/imessage_screenshot.png
 
 Prereqs:
     - Install dependencies: pip install -r requirements.txt
@@ -360,16 +361,16 @@ def build_cli() -> argparse.ArgumentParser:
         help="Override the OpenAI model (default: gpt-4.1-mini).",
     )
 
-    image_parser = subparsers.add_parser(
-        "image", help="Run OCR on a screenshot, then parse the extracted text."
+    tesseract_parser = subparsers.add_parser(
+        "tesseract", help="Use Tesseract OCR to extract text from an image."
     )
-    image_parser.add_argument(
+    tesseract_parser.add_argument(
         "image_path",
         nargs="?",
         type=Path,
         help="Path to the screenshot that contains the plan details. If omitted, you will be prompted interactively.",
     )
-    image_parser.add_argument(
+    tesseract_parser.add_argument(
         "--model",
         default="gpt-4.1-mini",
         help="Override the OpenAI model (default: gpt-4.1-mini).",
@@ -410,13 +411,13 @@ def main(argv: Optional[list[str]] = None) -> None:
                 raise ValueError("No text provided.")
             if not message_text:
                 raise ValueError("Cannot parse an empty text snippet.")
-    elif args.command == "image":
+    elif args.command == "tesseract":
         if args.image_path is not None:
             image_path_arg = args.image_path
         else:
             # Interactive mode for image path
             try:
-                raw_path = input("Enter path to screenshot image: ").strip()
+                raw_path = input("Enter path to screenshot image (Tesseract): ").strip()
             except EOFError:
                 raise ValueError("No image path provided.")
             if not raw_path:
@@ -452,7 +453,7 @@ def main(argv: Optional[list[str]] = None) -> None:
                 print(ocr_text, file=sys.stderr)
                 structured = harmony.run_text_pipeline(ocr_text, source_type="ocr")
                 result = {"ocr_text": ocr_text, "event": structured}
-            else:
+            elif args.command == "tesseract":
                 result = harmony.run_image_pipeline(image_path_arg)
         print("✅ Parsed result:")
         print(json.dumps(result, indent=2))
