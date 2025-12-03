@@ -95,7 +95,10 @@ class HarmonyStepZero:
     """Minimal intake pipeline for Harmony's Phase 0 prototype."""
 
     def __init__(self, model: str = "gpt-4.1-mini") -> None:
-        load_dotenv()
+        # Load .env from project root (one level up from step0/)
+        project_root = Path(__file__).parent.parent
+        env_path = project_root / ".env"
+        load_dotenv(dotenv_path=env_path)
         self.api_key = os.getenv("OPENAI_API_KEY")
         if not self.api_key:
             raise RuntimeError(
