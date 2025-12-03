@@ -7,7 +7,7 @@ This prototype shows the end-to-end intake pipeline: raw text or a screenshot in
 A Python virtual environment should be set up in `step0/venv/`. If it doesn't exist, create it:
 
 ```bash
-cd /Users/rchoyhughes/projects/harmony/step0
+cd /Users/[path-to-projects]/harmony/step0
 python3 -m venv venv
 ```
 
@@ -77,4 +77,4 @@ The script will then:
 - **Tesseract not found:** install it and ensure the `tesseract` binary is on your PATH (or set `TESSERACT_CMD`).
 - **Empty OCR text:** try a clearer screenshot or increase contrast before rerunning.
 
-That’s the entire Phase 0 flow—no UI, no iOS, just the intake logic we’ll embed later.***
+That’s the entire Phase 0 flow. No UI, no iOS, just the intake logic we’ll embed later.***
