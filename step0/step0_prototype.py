@@ -15,7 +15,7 @@ Usage:
 
 Prereqs:
     - Install dependencies: pip install -r requirements.txt
-    - Create a .env file with OPENAI_API_KEY=...
+    - Create a .env file with OPENAI_API_KEY=... in the root directory of the Harmony project
     - Install Tesseract OCR (macOS: brew install tesseract) so pytesseract
       can find the CLI binary.
 """
