@@ -3,7 +3,7 @@
 Harmony Phase 0 prototype.
 
 Capabilities:
-1. Accept a raw text snippet (ex: an iMessage) and ask OpenAI's GPT-4.1-mini
+1. Accept a raw text snippet (ex: an iMessage) and ask OpenAI's GPT-5-mini
    model to turn it into structured, calendar-ready JSON.
 2. Accept a screenshot, extract its text with OCR, and run the same parsing
    pipeline on the extracted text.
@@ -356,8 +356,8 @@ def build_cli() -> argparse.ArgumentParser:
     )
     text_parser.add_argument(
         "--model",
-        default="gpt-4.1-mini",
-        help="Override the OpenAI model (default: gpt-4.1-mini).",
+        default="gpt-5-mini",
+        help="Override the OpenAI model (default: gpt-5-mini).",
     )
 
     tesseract_parser = subparsers.add_parser(
@@ -371,8 +371,8 @@ def build_cli() -> argparse.ArgumentParser:
     )
     tesseract_parser.add_argument(
         "--model",
-        default="gpt-4.1-mini",
-        help="Override the OpenAI model (default: gpt-4.1-mini).",
+        default="gpt-5-mini",
+        help="Override the OpenAI model (default: gpt-5-mini).",
     )
 
     easyocr_parser = subparsers.add_parser(
@@ -386,8 +386,8 @@ def build_cli() -> argparse.ArgumentParser:
     )
     easyocr_parser.add_argument(
         "--model",
-        default="gpt-4.1-mini",
-        help="Override the OpenAI model (default: gpt-4.1-mini).",
+        default="gpt-5-mini",
+        help="Override the OpenAI model (default: gpt-5-mini).",
     )
 
     return parser
