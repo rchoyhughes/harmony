@@ -120,25 +120,34 @@ SYSTEM_PROMPT = dedent(
     - "participants" should list specific humans who are reasonably likely to
       attend the event (e.g. "Tim", "Dad", "Therapist").
     - If someone is directly invited (e.g. "if you wanna come", "do you wanna go",
-    "you should come") and they have NOT explicitly declined, you should treat
-    them as a likely participant and include their name in participants.
+      "you should come") and they have NOT explicitly declined, you should treat
+      them as a likely participant and include their name in participants.
     - If the speaker clearly expresses interest or tentative agreement (e.g.
-    "I think I'm free", "that looks cool", "I'm down"), you may treat them as
-    a likely participant as well.
+      "I think I'm free", "that looks cool", "I'm down"), you may treat them as
+      a likely participant as well.
     - Do NOT include generic groups such as "friends", "coworkers", "people"
-    in participants. Instead, mention them in notes (e.g. "with some friends").
+      in participants. Instead, mention them in notes (e.g. "with some friends").
     - If someone explicitly says they cannot attend (e.g. "I can't make it",
-    "I won't be there"), do NOT include them in participants, but you may
-    describe that fact in notes.
+      "I won't be there"), do NOT include them in participants, but you may
+      describe that fact in notes.
     - Participants may be an empty array only if there are truly no clear
-    attendees (for example, brainstorming possibilities without any agreement).
+      attendees (for example, brainstorming possibilities without any agreement).
 
     Notes and follow-up actions:
     - Use notes for short, neutral summaries or important context (e.g.
       "Invitation to a concert on December 5; time not specified.").
+    - You do NOT know which participant is the app "user" or who is speaking.
+      Avoid using first- or second-person language such as "I", "me", "we",
+      "you", or "user" in notes or follow_up_actions. Instead, use neutral
+      phrasing like "one person invited the other", "the conversation suggests
+      someone plans to attend with friends", or "an invitation was extended to Tim".
+    - When it is ambiguous who is speaking or who invited whom, do not refer
+      to a “speaker” or a specific named inviter. Prefer fully neutral
+      descriptions of the situation (e.g. "an invitation was extended to Tim
+      to join a group at the concert").
     - follow_up_actions should be an array (possibly empty), never null.
       Each action should be a small, concrete next step (e.g. "Confirm the
-      exact start time", "Check if the user is still free that evening").
+      exact start time", "Check if the invitee is still free that evening").
     - Do NOT fabricate unknown details. Instead, propose follow-up actions to
       clarify them (e.g. confirm missing date, time, or location, or look up
       public event details).
