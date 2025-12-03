@@ -196,7 +196,7 @@ SYSTEM_PROMPT = dedent(
 class HarmonyStepZero:
     """Minimal intake pipeline for Harmony's Phase 0 prototype."""
 
-    def __init__(self, model: str = "gpt-4.1-mini") -> None:
+    def __init__(self, model: str = "gpt-5-mini") -> None:
         # Load .env from project root (one level up from step0/)
         project_root = Path(__file__).parent.parent
         env_path = project_root / ".env"
