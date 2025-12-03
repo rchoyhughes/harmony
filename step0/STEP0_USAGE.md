@@ -53,45 +53,36 @@ Enter text to parse:
 
 ## 4. Parse a screenshot (inline or interactive)
 
-To parse a screenshot, choose one of Harmony’s OCR engines:
+Harmony now exposes three OCR modes:
 
-- **Tesseract (`tesseract`)** — lightweight, good for clean screenshots.
-- **EasyOCR (`easyocr`)** — deep‑learning based, stronger on noisy or dark‑mode screenshots.
+- **`ocr-tesseract`** — classical OCR, fast and accurate on crisp chat screenshots.
+- **`ocr-easyocr`** — deep-learning OCR, better when fonts are stylized or low‑contrast.
+- **`ocr-fusion`** — runs Tesseract and EasyOCR in parallel, then fuses both transcripts before parsing.
 
-Both produce text that Harmony then parses into structured events.
+Each mode funnels into the same GPT‑5‑mini parser.
 
-**Tesseract example:**
-
-```bash
-python step0_prototype.py tesseract /absolute/path/to/imessage_screenshot.png
-```
-
-**EasyOCR example:**
+**Examples:**
 
 ```bash
-python step0_prototype.py easyocr /absolute/path/to/imessage_screenshot.png
+python step0_prototype.py ocr-tesseract /absolute/path/to/imessage_screenshot.png
+python step0_prototype.py ocr-easyocr   /absolute/path/to/imessage_screenshot.png
+python step0_prototype.py ocr-fusion    /absolute/path/to/imessage_screenshot.png
 ```
 
 **Interactive mode:**
 
 ```bash
-python step0_prototype.py tesseract
+python step0_prototype.py ocr-tesseract
 Enter path to screenshot image (Tesseract):
 > /Users/you/Desktop/imessage.png
 ```
 
-Or interactively with EasyOCR:
-
-```bash
-python step0_prototype.py easyocr
-Enter path to screenshot image (EasyOCR):
-> /Users/you/Desktop/imessage.png
-```
+Swap `ocr-tesseract` with `ocr-easyocr` or `ocr-fusion` for the other engines—the prompt text will update automatically.
 
 After OCR completes, Harmony will:
-  1. Extract text from the screenshot.
-  2. Parse the text using the GPT‑4.1‑mini pipeline.
-  3. Output the OCR text and structured event JSON.
+  1. Extract text using the selected OCR engine(s).
+  2. Parse the text using the GPT‑5‑mini pipeline.
+  3. Output the OCR text bundle plus the structured event JSON.
 
 ## 5. Troubleshooting
 

@@ -10,8 +10,9 @@ Capabilities:
 
 Usage:
     python step0_prototype.py text "Tim: Wanna do dinner at 7 next Tuesday?"
-    python step0_prototype.py tesseract /path/to/imessage_screenshot.png
-    python step0_prototype.py easyocr /path/to/imessage_screenshot.png
+    python step0_prototype.py ocr-tesseract /path/to/imessage_screenshot.png
+    python step0_prototype.py ocr-easyocr /path/to/imessage_screenshot.png
+    python step0_prototype.py ocr-fusion /path/to/imessage_screenshot.png
 
 Prereqs:
     - Install dependencies: pip install -r requirements.txt
@@ -26,6 +27,7 @@ import argparse
 import json
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from textwrap import dedent
 from typing import Any, Dict, Iterable, Optional
@@ -46,6 +48,27 @@ import zoneinfo
 
 TIMEZONE = "America/New_York"
 today = datetime.now(zoneinfo.ZoneInfo(TIMEZONE)).date().isoformat()
+
+QUOTE_CHARS = "'\"“”‘’"
+
+
+def _sanitize_user_path(raw_path: str) -> Path:
+    """Trim whitespace and surrounding quotes/smart quotes from user-supplied paths."""
+    trimmed = raw_path.strip().strip(QUOTE_CHARS)
+    if not trimmed:
+        raise ValueError("No image path provided.")
+    return Path(trimmed)
+
+
+def _resolve_image_path(arg_path: Optional[Path], prompt_label: str) -> Path:
+    """Resolve an optional CLI path argument or prompt interactively."""
+    if arg_path is not None:
+        return arg_path
+    try:
+        raw_path = input(prompt_label)
+    except EOFError:
+        raise ValueError("No image path provided.")
+    return _sanitize_user_path(raw_path)
 
 SYSTEM_PROMPT = dedent(
     """
@@ -97,13 +120,25 @@ SYSTEM_PROMPT = dedent(
     - Confidence reflects how certain you feel about the entire suggestion.
 
     Input source rules:
-    - The user message will always begin with a line like "Source type: text" or
-      "Source type: ocr".
+    - The user message will always begin with "Source type: <value>" where the
+      value is one of: "text", "ocr-tesseract", "ocr-easyocr", or "ocr-fusion".
     - "text" means the content was provided directly by the user as plain text.
-    - "ocr" means the content was extracted from a screenshot or image via OCR.
-    - When Source type is "ocr", be especially cautious about lines that look
-      like chat app metadata (timestamps, delivery labels, etc.). These may be
-      UI artifacts rather than actual event details.
+    - "ocr-tesseract" or "ocr-easyocr" means the text was extracted from a
+      screenshot via the specified OCR engine.
+    - "ocr-fusion" means you will receive BOTH OCR transcripts, delineated with
+      headers such as "[Tesseract OCR]" and "[EasyOCR OCR]".
+    - Tesseract strengths: reliable on crisp, high-contrast screenshots and
+      structured chat logs, but it may miss stylized fonts, emojis, or low-light
+      captures.
+    - EasyOCR strengths: handles stylized fonts, low-light photos, and mixed
+      languages better, but may hallucinate punctuation, spacing, or duplicate
+      lines.
+    - When Source type is "ocr-fusion", synthesize the most trustworthy details
+      from BOTH transcripts—prefer agreement, and use model strengths to decide
+      which snippet is more reliable.
+    - For any OCR-based source, treat chat metadata (timestamps, delivery labels,
+      etc.) as UI artifacts unless the conversational text explicitly mentions
+      them as part of the plan.
 
     Event title rules:
     - The event title must be short, neutral, and calendar-friendly.
@@ -153,32 +188,52 @@ SYSTEM_PROMPT = dedent(
     Participants:
     - "participants" should list specific humans who are reasonably likely to
       attend the event (e.g. "Tim", "Dad", "Therapist").
+    - When a concrete plan or event is discussed in a conversation and specific
+      people are named in connection with that plan (for example, their name
+      appears near messages about going, attending, being free, or reacting to
+      the plan), include those named people in participants unless they
+      explicitly decline.
+    - Names that appear in a chat header, sender labels, or near the plan
+      still count as associated with the conversation and may be participants.
     - If someone is directly invited (e.g. "if you wanna come", "do you wanna go",
       "you should come") and they have NOT explicitly declined, you should treat
       them as a likely participant and include their name in participants.
-    - If the speaker clearly expresses interest or tentative agreement (e.g.
-      "I think I'm free", "that looks cool", "I'm down"), you may treat them as
-      a likely participant as well.
+    - If a person clearly expresses interest or tentative agreement (e.g.
+      "I think I'm free", "that looks cool", "I'm down"), treat them as a likely
+      participant as well.
+    - You do NOT know which person is the app "user" or who said which line.
+      Treat all named humans associated with the plan symmetrically and do not
+      try to infer roles like "inviter" or "invitee".
+    - If there is exactly one specific human name in the conversation and a
+      real event is clearly being planned or considered, you MUST include that
+      name in participants unless they have clearly declined.
+    - When in doubt between including or excluding a named human as a
+      participant, prefer to INCLUDE them as a participant rather than leaving
+      the array empty.
     - Do NOT include generic groups such as "friends", "coworkers", "people"
       in participants. Instead, mention them in notes (e.g. "with some friends").
     - If someone explicitly says they cannot attend (e.g. "I can't make it",
       "I won't be there"), do NOT include them in participants, but you may
       describe that fact in notes.
     - Participants may be an empty array only if there are truly no clear
-      attendees (for example, brainstorming possibilities without any agreement).
+      attendees (for example, brainstorming possibilities without any agreement
+      or named people only mentioned in a completely unrelated context).
 
     Notes and follow-up actions:
     - Use notes for short, neutral summaries or important context (e.g.
       "Invitation to a concert on December 5; time not specified.").
     - You do NOT know which participant is the app "user" or who is speaking.
-      Avoid using first- or second-person language such as "I", "me", "we",
-      "you", or "user" in notes or follow_up_actions.
+      Avoid first- or second-person language such as "I", "me", "we",
+      "you", or "user" in notes or follow_up_actions. Also avoid role words
+      like "sender", "recipient", or "poster". Refer to people by
+      name or as "participants" or "the conversation" instead.
     - When invitations or plans are mentioned, do NOT state or imply who invited
       whom or who the invitation is directed to. Do not use phrases like
-      "X invited Y" or "an invitation was extended to Tim". Instead, describe
-      the situation in fully neutral terms, such as "there is an invitation to
-      attend a concert involving Tim and a group of friends" or "the
-      conversation discusses going to the event together".
+      "X invited Y" or "an invitation was extended to Tim" or "the poster" or
+      "the recipient". Instead, describe the situation in fully neutral terms,
+      such as "the conversation discusses going to the event together" or
+      "there is an invitation to attend the event involving the named
+      participants".
     - follow_up_actions should be an array (possibly empty), never null.
       Each action should be a small, concrete next step (e.g. "Confirm the
       exact start time", "Check if the invitee is still free that evening").
@@ -218,40 +273,48 @@ class HarmonyStepZero:
         if not text or not text.strip():
             raise ValueError("Cannot parse an empty text snippet.")
 
-        messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
+        response_input = [
+            {
+                "role": "system",
+                "content": [{"type": "input_text", "text": SYSTEM_PROMPT}],
+            },
             {
                 "role": "user",
-                "content": dedent(
-                    f"""
-                    Source type: {source_type}
+                "content": [
+                    {
+                        "type": "input_text",
+                        "text": dedent(
+                            f"""
+                            Source type: {source_type}
 
-                    Source message:
-                    \"\"\"{text.strip()}\"\"\"
+                            Source message:
+                            \"\"\"{text.strip()}\"\"\"
 
-                    Today's date: {today}
-                    Assume the user is in the timezone: {TIMEZONE}.
+                            Today's date: {today}
+                            Assume the user is in the timezone: {TIMEZONE}.
 
-                    Please respond with the JSON object now, following the JSON structure exactly.
-                    """
-                ).strip(),
+                            Please respond with the JSON object now, following the JSON structure exactly.
+                            """
+                        ).strip(),
+                    }
+                ],
             },
         ]
 
-        response = self.client.chat.completions.create(
+        responses_api = getattr(self.client, "responses", None)
+        if responses_api is None:
+            raise RuntimeError("OpenAI client is missing the Responses API surface.")
+
+        response = responses_api.create(  # type: ignore[arg-type]
             model=self.model,
-            messages=messages,
-            response_format={"type": "json_object"},
-            temperature=0.2,
+            input=response_input,
+            text={"format": {"type": "json_object"}},
         )
         return self._response_to_json(response)
 
-    def run_tesseract_pipeline(self, image_path: Path) -> Dict[str, Any]:
-        """
-        Extract text from an image using Tesseract OCR and run the structured parsing pipeline.
-        """
-        ocr_text = self.extract_text_with_tesseract(image_path)
-        structured_event = self.run_text_pipeline(ocr_text, source_type="ocr")
+    def _process_ocr_text(self, ocr_text: str, source_type: str) -> Dict[str, Any]:
+        """Shared helper to log OCR text and run it through the text pipeline."""
+        structured_event = self.run_text_pipeline(ocr_text, source_type=source_type)
 
         print("🔍 OCR text:", file=sys.stderr)
         print(ocr_text, file=sys.stderr)
@@ -260,6 +323,40 @@ class HarmonyStepZero:
             "ocr_text": ocr_text,
             "event": structured_event,
         }
+
+    def run_tesseract_pipeline(self, image_path: Path) -> Dict[str, Any]:
+        """
+        Extract text from an image using Tesseract OCR and run the structured parsing pipeline.
+        """
+        ocr_text = self.extract_text_with_tesseract(image_path)
+        return self._process_ocr_text(ocr_text, source_type="ocr-tesseract")
+
+    def run_easyocr_pipeline(self, image_path: Path) -> Dict[str, Any]:
+        """
+        Extract text from an image using EasyOCR and run the structured parsing pipeline.
+        """
+        ocr_text = self.extract_text_with_easyocr(image_path)
+        return self._process_ocr_text(ocr_text, source_type="ocr-easyocr")
+
+    def run_fusion_pipeline(self, image_path: Path) -> Dict[str, Any]:
+        """
+        Run both OCR engines in parallel, then feed the combined transcript to the parser.
+        """
+        if not EASYOCR_AVAILABLE:
+            raise RuntimeError(
+                "EasyOCR is required for OCR fusion. Install it with `pip install easyocr`."
+            )
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            tess_future = executor.submit(self.extract_text_with_tesseract, image_path)
+            easy_future = executor.submit(self.extract_text_with_easyocr, image_path)
+            tesseract_text = tess_future.result()
+            easyocr_text = easy_future.result()
+
+        fusion_payload = self._format_fusion_transcript(
+            tesseract_text, easyocr_text
+        )
+        return self._process_ocr_text(fusion_payload, source_type="ocr-fusion")
 
     @staticmethod
     def extract_text_with_tesseract(image_path: Path) -> str:
@@ -297,12 +394,27 @@ class HarmonyStepZero:
         if not expanded_path.exists():
             raise FileNotFoundError(f"Image not found: {expanded_path}")
 
-        reader = easyocr.Reader(['en'], gpu=False)
+        reader = easyocr.Reader(['en'], gpu=True)
         result = reader.readtext(str(expanded_path), detail=0)
         cleaned = "\n".join(line.strip() for line in result if line.strip())
         if not cleaned:
             raise RuntimeError("EasyOCR returned no text. Try a clearer screenshot.")
         return cleaned
+
+    @staticmethod
+    def _format_fusion_transcript(tesseract_text: str, easyocr_text: str) -> str:
+        """Create a demarcated transcript containing both OCR outputs."""
+        return dedent(
+            f"""
+            [Tesseract OCR Transcript]
+            ------------------------
+            {tesseract_text.strip() or '(no text found)'}
+
+            [EasyOCR OCR Transcript]
+            -----------------------
+            {easyocr_text.strip() or '(no text found)'}
+            """
+        ).strip()
 
     @staticmethod
     def _response_to_json(response: Any) -> Dict[str, Any]:
@@ -318,22 +430,75 @@ class HarmonyStepZero:
     @staticmethod
     def _extract_output_text(response: Any) -> str:
         """
-        Extract text content from a ChatCompletion response.
+        Extract text content from an OpenAI Responses payload, with a ChatCompletion fallback.
         """
+        output = getattr(response, "output", None)
+        if output:
+            text_chunks: list[str] = []
+            for item in output:
+                item_type = getattr(item, "type", None) or (
+                    item.get("type") if isinstance(item, dict) else None
+                )
+                if item_type != "output_text":
+                    continue
+                content = getattr(item, "content", None) or (
+                    item.get("content") if isinstance(item, dict) else None
+                )
+                if not content:
+                    continue
+                for chunk in content:
+                    chunk_type = getattr(chunk, "type", None) or (
+                        chunk.get("type") if isinstance(chunk, dict) else None
+                    )
+                    if chunk_type != "text":
+                        continue
+                    chunk_text = getattr(chunk, "text", None) or (
+                        chunk.get("text") if isinstance(chunk, dict) else None
+                    )
+                    value = None
+                    if isinstance(chunk_text, dict):
+                        value = chunk_text.get("value")
+                    elif isinstance(chunk_text, str):
+                        value = chunk_text
+                    if value:
+                        text_chunks.append(value)
+            if text_chunks:
+                return "".join(text_chunks)
+
+        output_text = getattr(response, "output_text", None)
+        if output_text:
+            if isinstance(output_text, str):
+                return output_text
+            if isinstance(output_text, Iterable):
+                collected = [str(part) for part in output_text if part]
+                if collected:
+                    return "".join(collected)
+
         choices = getattr(response, "choices", None)
-        if choices and len(choices) > 0:
+        if choices:
             first_choice = choices[0]
-            message = getattr(first_choice, "message", None)
+            message = getattr(first_choice, "message", None) or (
+                first_choice.get("message") if isinstance(first_choice, dict) else None
+            )
             if message:
-                content = getattr(message, "content", None)
+                content = getattr(message, "content", None) or (
+                    message.get("content") if isinstance(message, dict) else None
+                )
                 if isinstance(content, str):
                     return content
-                if isinstance(content, Iterable) and not isinstance(content, str):
+                if isinstance(content, Iterable):
                     chunks: list[str] = []
                     for part in content:
+                        if not part:
+                            continue
                         if isinstance(part, str):
                             chunks.append(part)
-                        elif isinstance(part, dict):
+                            continue
+                        text_attr = getattr(part, "text", None)
+                        if text_attr:
+                            chunks.append(text_attr)
+                            continue
+                        if isinstance(part, dict):
                             chunks.append(part.get("text", ""))
                     if chunks:
                         return "".join(chunks)
@@ -360,31 +525,47 @@ def build_cli() -> argparse.ArgumentParser:
         help="Override the OpenAI model (default: gpt-5-mini).",
     )
 
-    tesseract_parser = subparsers.add_parser(
-        "tesseract", help="Use Tesseract OCR to extract text from an image."
+    ocr_tess_parser = subparsers.add_parser(
+        "ocr-tesseract", help="Use Tesseract OCR to extract text from an image."
     )
-    tesseract_parser.add_argument(
+    ocr_tess_parser.add_argument(
         "image_path",
         nargs="?",
         type=Path,
-        help="Path to the screenshot that contains the plan details. If omitted, you will be prompted interactively.",
+        help="Path to the screenshot that contains the plan details. Prompts interactively if omitted.",
     )
-    tesseract_parser.add_argument(
+    ocr_tess_parser.add_argument(
         "--model",
         default="gpt-5-mini",
         help="Override the OpenAI model (default: gpt-5-mini).",
     )
 
-    easyocr_parser = subparsers.add_parser(
-        "easyocr", help="Use EasyOCR to extract text from an image."
+    ocr_easy_parser = subparsers.add_parser(
+        "ocr-easyocr", help="Use EasyOCR to extract text from an image."
     )
-    easyocr_parser.add_argument(
+    ocr_easy_parser.add_argument(
         "image_path",
         nargs="?",
         type=Path,
-        help="Path to the screenshot. If omitted, prompts interactively.",
+        help="Path to the screenshot. Prompts interactively if omitted.",
     )
-    easyocr_parser.add_argument(
+    ocr_easy_parser.add_argument(
+        "--model",
+        default="gpt-5-mini",
+        help="Override the OpenAI model (default: gpt-5-mini).",
+    )
+
+    ocr_fusion_parser = subparsers.add_parser(
+        "ocr-fusion",
+        help="Run Tesseract and EasyOCR in parallel, then fuse the transcripts.",
+    )
+    ocr_fusion_parser.add_argument(
+        "image_path",
+        nargs="?",
+        type=Path,
+        help="Path to the screenshot. Prompts interactively if omitted.",
+    )
+    ocr_fusion_parser.add_argument(
         "--model",
         default="gpt-5-mini",
         help="Override the OpenAI model (default: gpt-5-mini).",
@@ -410,34 +591,16 @@ def main(argv: Optional[list[str]] = None) -> None:
                 raise ValueError("No text provided.")
             if not message_text:
                 raise ValueError("Cannot parse an empty text snippet.")
-    elif args.command == "tesseract":
-        if args.image_path is not None:
-            image_path_arg = args.image_path
-        else:
-            # Interactive mode for image path
-            try:
-                raw_path = input("Enter path to screenshot image (Tesseract): ").strip()
-            except EOFError:
-                raise ValueError("No image path provided.")
-            if not raw_path:
-                raise ValueError("No image path provided.")
-
-            # Strip leading/trailing ASCII and smart quotes if the user entered them
-            raw_path = raw_path.strip("'\u2019\u2018\"\u201c\u201d")
-
-            image_path_arg = Path(raw_path)
-    elif args.command == "easyocr":
-        if args.image_path is not None:
-            image_path_arg = args.image_path
-        else:
-            try:
-                raw_path = input("Enter path to screenshot image (EasyOCR): ").strip()
-            except EOFError:
-                raise ValueError("No image path provided.")
-            if not raw_path:
-                raise ValueError("No image path provided.")
-            raw_path = raw_path.strip("'\u2019\u2018\"\u201c\u201d")
-            image_path_arg = Path(raw_path)
+    elif args.command in {"ocr-tesseract", "ocr-easyocr", "ocr-fusion"}:
+        prompt_map = {
+            "ocr-tesseract": "Enter path to screenshot image (Tesseract): ",
+            "ocr-easyocr": "Enter path to screenshot image (EasyOCR): ",
+            "ocr-fusion": "Enter path to screenshot image (Fusion OCR): ",
+        }
+        image_path_arg = _resolve_image_path(
+            args.image_path,
+            prompt_map[args.command],
+        )
 
     try:
         harmony = HarmonyStepZero(model=args.model)
@@ -445,15 +608,12 @@ def main(argv: Optional[list[str]] = None) -> None:
             result = harmony.run_text_pipeline(message_text)
         else:
             assert image_path_arg is not None
-            if args.command == "easyocr":
-                ocr_text = HarmonyStepZero.extract_text_with_easyocr(image_path_arg)
-                # Mirror Tesseract logging: show raw OCR output
-                print("🔍 OCR text:", file=sys.stderr)
-                print(ocr_text, file=sys.stderr)
-                structured = harmony.run_text_pipeline(ocr_text, source_type="ocr")
-                result = {"ocr_text": ocr_text, "event": structured}
-            elif args.command == "tesseract":
+            if args.command == "ocr-easyocr":
+                result = harmony.run_easyocr_pipeline(image_path_arg)
+            elif args.command == "ocr-tesseract":
                 result = harmony.run_tesseract_pipeline(image_path_arg)
+            elif args.command == "ocr-fusion":
+                result = harmony.run_fusion_pipeline(image_path_arg)
         print("✅ Parsed result:")
         print(json.dumps(result, indent=2))
     except Exception as exc:  # pragma: no cover - CLI convenience
