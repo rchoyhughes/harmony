@@ -376,7 +376,7 @@ def build_cli() -> argparse.ArgumentParser:
     )
 
     easyocr_parser = subparsers.add_parser(
-        "easyocr", help="Use EasyOCR to extract text from the image instead of Tesseract."
+        "easyocr", help="Use EasyOCR to extract text from an image."
     )
     easyocr_parser.add_argument(
         "image_path",
