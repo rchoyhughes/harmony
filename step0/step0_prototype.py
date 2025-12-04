@@ -18,8 +18,7 @@ Prereqs:
     - Install dependencies: pip install -r requirements.txt
     - Create a .env file with:
         VERCEL_AI_GATEWAY_API_KEY=...
-        VERCEL_AI_GATEWAY_URL=https://<your-gateway-host>/v1/<project>/openai
-      (Use your Vercel AI Gateway OpenAI-compatible endpoint + key.)
+      (Use your Vercel AI Gateway key.)
     - Install Tesseract OCR (macOS: brew install tesseract) so pytesseract
       can find the CLI binary.
 """
@@ -51,6 +50,7 @@ import pytesseract  # type: ignore[import]
 import zoneinfo
 
 TIMEZONE = "America/New_York"
+DEFAULT_GATEWAY_URL = "https://ai-gateway.vercel.sh/v1"
 
 
 class ModelId(str, Enum):
@@ -298,32 +298,34 @@ SYSTEM_PROMPT = dedent(
 class HarmonyStepZero:
     """Minimal intake pipeline for Harmony's Phase 0 prototype."""
 
-    def __init__(self, model: Union[str, ModelId] = DEFAULT_MODEL) -> None:
+    def __init__(
+        self,
+        model: Union[str, ModelId] = DEFAULT_MODEL,
+        allow_unknown_model: bool = False,
+    ) -> None:
         # Load .env from project root (one level up from step0/)
         project_root = Path(__file__).parent.parent
         env_path = project_root / ".env"
         load_dotenv(dotenv_path=env_path)
+        gateway_url = os.getenv("VERCEL_AI_GATEWAY_URL", DEFAULT_GATEWAY_URL)
         gateway_api_key = os.getenv("VERCEL_AI_GATEWAY_API_KEY")
-        gateway_url = os.getenv("VERCEL_AI_GATEWAY_URL")
         if not gateway_api_key:
             raise RuntimeError(
                 "VERCEL_AI_GATEWAY_API_KEY is missing. Put it inside .env (see STEP0_USAGE.md)."
-            )
-        if not gateway_url:
-            raise RuntimeError(
-                "VERCEL_AI_GATEWAY_URL is missing. Provide your OpenAI-compatible Vercel AI Gateway endpoint."
             )
         self.client = OpenAI(
             api_key=gateway_api_key,
             base_url=gateway_url.rstrip("/"),
         )
-        self.model = self._validate_model(model)
+        self.model = self._validate_model(model, allow_unknown=allow_unknown_model)
 
     @staticmethod
-    def _validate_model(model: Union[str, ModelId]) -> str:
+    def _validate_model(
+        model: Union[str, ModelId], allow_unknown: bool = False
+    ) -> str:
         """Ensure the selected model is one of the supported gateway options."""
         model_value = _parse_model_arg(model) if isinstance(model, str) else model.value
-        if model_value not in SUPPORTED_MODELS:
+        if model_value not in SUPPORTED_MODELS and not allow_unknown:
             raise ValueError(
                 f"Unsupported model '{model_value}'. Choose one of: {', '.join(SUPPORTED_MODELS)}."
             )
@@ -593,6 +595,8 @@ def _parse_model_arg(raw: str) -> str:
     cleaned = raw.strip().lower()
     if cleaned in MODEL_ALIASES:
         return MODEL_ALIASES[cleaned]
+    # Fall back to exact string (for --model-string)
+    return cleaned
     raise argparse.ArgumentTypeError(
         f"Unsupported model '{raw}'. Choose one of: "
         f"{', '.join(sorted(set(MODEL_ALIASES.keys())))}"
@@ -605,9 +609,15 @@ def build_cli() -> argparse.ArgumentParser:
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
     model_help = (
-        "Vercel AI Gateway model. Shorthands: gpt-5-mini|gpt5|5-mini, "
-        "gpt-4.1-mini|4.1-mini, gemini|google, grok|xai. "
-        f"Default: {DEFAULT_MODEL}."
+        "LLM model (shorthands) routed through your OpenAI-compatible endpoint "
+        f"(default base_url: {DEFAULT_GATEWAY_URL}). "
+        "Shorthands: gpt-5-mini|gpt5|5-mini, gpt-4.1-mini|4.1-mini, "
+        "gemini|google, grok|xai, deepseek|r1. "
+        f"Default model: {DEFAULT_MODEL}."
+    )
+    model_string_help = (
+        "Exact provider model ID (bypasses shorthands), e.g. openai/gpt-5-nano "
+        "or deepseek/deepseek-chat. Use when your gateway exposes custom IDs."
     )
 
     text_parser = subparsers.add_parser(
@@ -618,11 +628,17 @@ def build_cli() -> argparse.ArgumentParser:
         nargs="*",
         help="The text snippet to parse (wrap in quotes to include spaces).",
     )
-    text_parser.add_argument(
+    model_group = text_parser.add_mutually_exclusive_group()
+    model_group.add_argument(
         "--model",
         default=DEFAULT_MODEL,
         type=_parse_model_arg,
         help=model_help,
+    )
+    model_group.add_argument(
+        "--model-string",
+        default=None,
+        help=model_string_help,
     )
 
     ocr_tess_parser = subparsers.add_parser(
@@ -634,11 +650,17 @@ def build_cli() -> argparse.ArgumentParser:
         type=Path,
         help="Path to the screenshot that contains the plan details. Prompts interactively if omitted.",
     )
-    ocr_tess_parser.add_argument(
+    tess_model_group = ocr_tess_parser.add_mutually_exclusive_group()
+    tess_model_group.add_argument(
         "--model",
         default=DEFAULT_MODEL,
         type=_parse_model_arg,
         help=model_help,
+    )
+    tess_model_group.add_argument(
+        "--model-string",
+        default=None,
+        help=model_string_help,
     )
 
     ocr_easy_parser = subparsers.add_parser(
@@ -650,11 +672,17 @@ def build_cli() -> argparse.ArgumentParser:
         type=Path,
         help="Path to the screenshot. Prompts interactively if omitted.",
     )
-    ocr_easy_parser.add_argument(
+    easy_model_group = ocr_easy_parser.add_mutually_exclusive_group()
+    easy_model_group.add_argument(
         "--model",
         default=DEFAULT_MODEL,
         type=_parse_model_arg,
         help=model_help,
+    )
+    easy_model_group.add_argument(
+        "--model-string",
+        default=None,
+        help=model_string_help,
     )
 
     ocr_fusion_parser = subparsers.add_parser(
@@ -667,11 +695,17 @@ def build_cli() -> argparse.ArgumentParser:
         type=Path,
         help="Path to the screenshot. Prompts interactively if omitted.",
     )
-    ocr_fusion_parser.add_argument(
+    fusion_model_group = ocr_fusion_parser.add_mutually_exclusive_group()
+    fusion_model_group.add_argument(
         "--model",
         default=DEFAULT_MODEL,
         type=_parse_model_arg,
         help=model_help,
+    )
+    fusion_model_group.add_argument(
+        "--model-string",
+        default=None,
+        help=model_string_help,
     )
 
     return parser
@@ -706,7 +740,18 @@ def main(argv: Optional[list[str]] = None) -> None:
         )
 
     try:
-        harmony = HarmonyStepZero(model=args.model)
+        model_arg = getattr(args, "model", DEFAULT_MODEL)
+        model_string_arg = getattr(args, "model_string", None)
+        allow_unknown_model = False
+        selected_model = model_arg
+        if model_string_arg is not None:
+            selected_model = model_string_arg.strip()
+            allow_unknown_model = True
+
+        harmony = HarmonyStepZero(
+            model=selected_model,
+            allow_unknown_model=allow_unknown_model,
+        )
         if message_text is not None:
             result = harmony.run_text_pipeline(message_text)
         else:

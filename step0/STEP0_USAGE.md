@@ -25,16 +25,15 @@ Install Tesseract so OCR works (macOS example):
 brew install tesseract
 ```
 
-## 2. Configure the Vercel AI Gateway credentials
+## 2. Configure the OpenAI-compatible endpoint
 
-Create `/Users/rchoyhughes/projects/harmony/.env` with your OpenAI-compatible Vercel AI Gateway endpoint and key:
+Create a `.env` file in the project root with:
 
-```
+```bash
 VERCEL_AI_GATEWAY_API_KEY=...
-VERCEL_AI_GATEWAY_URL=https://<your-gateway-host>/v1/<project>/openai
+# Optional: override the OpenAI-compatible base URL (defaults to https://ai-gateway.vercel.sh/v1)
+# VERCEL_AI_GATEWAY_URL=https://ai-gateway.vercel.sh/v1
 ```
-
-(Both values are required for the LLM parsing step.)
 
 ## 3. Parse a raw text message (inline or interactive)
 
@@ -44,7 +43,9 @@ You can parse text either by passing it inline or by entering it interactively:
 python step0_prototype.py text "Tim: Wanna do dinner at 7 next Tuesday at Garden Carver?"
 ```
 
-Add `--model` to select a Vercel AI Gateway model (default: `openai/gpt-5-mini`). Supported options: `openai/gpt-5-mini`, `openai/gpt-4.1-mini`, `google/gemini-2.5-flash`, `xai/grok-4.1-fast-reasoning`.
+Add `--model` to select a model via shorthands (default: `openai/gpt-5-mini`). Shorthands: `gpt-5-mini`/`gpt5`/`5-mini`, `gpt-4.1-mini`/`4.1-mini`, `gemini`/`google`, `grok`/`xai`, `deepseek`/`r1`.
+
+Use `--model-string` to pass an exact provider model ID (bypasses shorthands), e.g. `openai/gpt-5-nano` or `deepseek/deepseek-chat`. Both flags route through your configured OpenAI-compatible base URL.
 
 ```bash
 python step0_prototype.py text --model openai/gpt-4.1-mini "Tim: Wanna do dinner at 7 next Tuesday at Garden Carver?"
@@ -66,7 +67,7 @@ Harmony now exposes three OCR modes:
 - **`ocr-easyocr`** — deep-learning OCR, better when fonts are stylized or low‑contrast.
 - **`ocr-fusion`** — runs Tesseract and EasyOCR in parallel, then fuses both transcripts before parsing.
 
-Each mode funnels into the same Vercel AI Gateway parser (default: `openai/gpt-5-mini`). Use `--model` to pick `openai/gpt-4.1-mini`, `google/gemini-2.5-flash`, or `xai/grok-4.1-fast-reasoning`.
+Each mode funnels into the same OpenAI-compatible endpoint (default base URL: `https://ai-gateway.vercel.sh/v1`, override with `VERCEL_AI_GATEWAY_URL`). Use `--model` shorthands (e.g., `gemini`, `grok`, `deepseek`, `gpt-4.1-mini`) or `--model-string` for an exact provider ID.
 
 **Examples:**
 
@@ -81,12 +82,13 @@ python step0_prototype.py ocr-fusion    /absolute/path/to/imessage_screenshot.pn
 ```bash
 python step0_prototype.py ocr-tesseract
 Enter path to screenshot image (Tesseract):
-> /Users/you/Desktop/imessage.png
+> /path/to/imessage.png
 ```
 
 Swap `ocr-tesseract` with `ocr-easyocr` or `ocr-fusion` for the other engines—the prompt text will update automatically.
 
 After OCR completes, Harmony will:
+
   1. Extract text using the selected OCR engine(s).
   2. Parse the text using the selected Vercel AI Gateway model.
   3. Output the OCR text bundle plus the structured event JSON.
