@@ -60,7 +60,7 @@ class ModelId(str, Enum):
     OPENAI_GPT4_1_MINI = "openai/gpt-4.1-mini"
     GOOGLE_GEMINI_2_5_FLASH = "google/gemini-2.5-flash"
     XAI_GROK_4_1_FAST_REASONING = "xai/grok-4.1-fast-reasoning"
-    DEEPSEEK_R1 = "deepseek/deepseek-r1"
+    DEEPSEEK = "deepseek/deepseek-v3.2"
 
 
 DEFAULT_MODEL = ModelId.OPENAI_GPT5_MINI.value
@@ -91,8 +91,6 @@ MODEL_ALIASES: Dict[str, str] = {
     ModelId.XAI_GROK_4_1_FAST_REASONING.value: ModelId.XAI_GROK_4_1_FAST_REASONING.value,
     # DeepSeek
     "deepseek": ModelId.DEEPSEEK_R1.value,
-    "r1": ModelId.DEEPSEEK_R1.value,
-    "deepseek-r1": ModelId.DEEPSEEK_R1.value,
     ModelId.DEEPSEEK_R1.value: ModelId.DEEPSEEK_R1.value,
 }
 
