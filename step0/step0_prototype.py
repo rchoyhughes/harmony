@@ -3,8 +3,8 @@
 Harmony Phase 0 prototype.
 
 Capabilities:
-1. Accept a raw text snippet (ex: an iMessage) and ask OpenAI's GPT-5-mini
-   model to turn it into structured, calendar-ready JSON.
+1. Accept a raw text snippet (ex: an iMessage) and ask a Vercel AI Gateway
+   model (default: gpt-5-mini) to turn it into structured, calendar-ready JSON.
 2. Accept a screenshot, extract its text with OCR, and run the same parsing
    pipeline on the extracted text.
 
@@ -16,7 +16,10 @@ Usage:
 
 Prereqs:
     - Install dependencies: pip install -r requirements.txt
-    - Create a .env file with OPENAI_API_KEY=... in the root directory of the Harmony project
+    - Create a .env file with:
+        VERCEL_AI_GATEWAY_API_KEY=...
+        VERCEL_AI_GATEWAY_URL=https://<your-gateway-host>/v1/<project>/openai
+      (Use your Vercel AI Gateway OpenAI-compatible endpoint + key.)
     - Install Tesseract OCR (macOS: brew install tesseract) so pytesseract
       can find the CLI binary.
 """
@@ -28,9 +31,10 @@ import json
 import os
 import sys
 from concurrent.futures import ThreadPoolExecutor
+from enum import Enum
 from pathlib import Path
 from textwrap import dedent
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Iterable, Optional, Union
 
 # Optional EasyOCR support
 try:
@@ -47,7 +51,50 @@ import pytesseract  # type: ignore[import]
 import zoneinfo
 
 TIMEZONE = "America/New_York"
+
+
+class ModelId(str, Enum):
+    """Provider-specific model identifiers."""
+
+    OPENAI_GPT5_MINI = "openai/gpt-5-mini"
+    OPENAI_GPT4_1_MINI = "openai/gpt-4.1-mini"
+    GOOGLE_GEMINI_2_5_FLASH = "google/gemini-2.5-flash"
+    XAI_GROK_4_1_FAST_REASONING = "xai/grok-4.1-fast-reasoning"
+    DEEPSEEK_R1 = "deepseek/deepseek-r1"
+
+
+DEFAULT_MODEL = ModelId.OPENAI_GPT5_MINI.value
+SUPPORTED_MODELS: tuple[str, ...] = tuple(m.value for m in ModelId)
 today = datetime.now(zoneinfo.ZoneInfo(TIMEZONE)).date().isoformat()
+
+# Shorthand-to-provider model aliases for CLI ergonomics
+MODEL_ALIASES: Dict[str, str] = {
+    # GPT-5-mini
+    "gpt-5-mini": ModelId.OPENAI_GPT5_MINI.value,
+    "5-mini": ModelId.OPENAI_GPT5_MINI.value,
+    "gpt5": ModelId.OPENAI_GPT5_MINI.value,
+    "gpt5-mini": ModelId.OPENAI_GPT5_MINI.value,
+    ModelId.OPENAI_GPT5_MINI.value: ModelId.OPENAI_GPT5_MINI.value,
+    # GPT-4.1-mini
+    "gpt-4.1-mini": ModelId.OPENAI_GPT4_1_MINI.value,
+    "4.1-mini": ModelId.OPENAI_GPT4_1_MINI.value,
+    "gpt4.1-mini": ModelId.OPENAI_GPT4_1_MINI.value,
+    "gpt4-mini": ModelId.OPENAI_GPT4_1_MINI.value,
+    ModelId.OPENAI_GPT4_1_MINI.value: ModelId.OPENAI_GPT4_1_MINI.value,
+    # Gemini
+    "gemini": ModelId.GOOGLE_GEMINI_2_5_FLASH.value,
+    "google": ModelId.GOOGLE_GEMINI_2_5_FLASH.value,
+    ModelId.GOOGLE_GEMINI_2_5_FLASH.value: ModelId.GOOGLE_GEMINI_2_5_FLASH.value,
+    # Grok
+    "grok": ModelId.XAI_GROK_4_1_FAST_REASONING.value,
+    "xai": ModelId.XAI_GROK_4_1_FAST_REASONING.value,
+    ModelId.XAI_GROK_4_1_FAST_REASONING.value: ModelId.XAI_GROK_4_1_FAST_REASONING.value,
+    # DeepSeek
+    "deepseek": ModelId.DEEPSEEK_R1.value,
+    "r1": ModelId.DEEPSEEK_R1.value,
+    "deepseek-r1": ModelId.DEEPSEEK_R1.value,
+    ModelId.DEEPSEEK_R1.value: ModelId.DEEPSEEK_R1.value,
+}
 
 QUOTE_CHARS = "'\"“”‘’"
 
@@ -251,18 +298,36 @@ SYSTEM_PROMPT = dedent(
 class HarmonyStepZero:
     """Minimal intake pipeline for Harmony's Phase 0 prototype."""
 
-    def __init__(self, model: str = "gpt-5-mini") -> None:
+    def __init__(self, model: Union[str, ModelId] = DEFAULT_MODEL) -> None:
         # Load .env from project root (one level up from step0/)
         project_root = Path(__file__).parent.parent
         env_path = project_root / ".env"
         load_dotenv(dotenv_path=env_path)
-        self.api_key = os.getenv("OPENAI_API_KEY")
-        if not self.api_key:
+        gateway_api_key = os.getenv("VERCEL_AI_GATEWAY_API_KEY")
+        gateway_url = os.getenv("VERCEL_AI_GATEWAY_URL")
+        if not gateway_api_key:
             raise RuntimeError(
-                "OPENAI_API_KEY is missing. Put it inside .env (see README)."
+                "VERCEL_AI_GATEWAY_API_KEY is missing. Put it inside .env (see STEP0_USAGE.md)."
             )
-        self.client = OpenAI(api_key=self.api_key)
-        self.model = model
+        if not gateway_url:
+            raise RuntimeError(
+                "VERCEL_AI_GATEWAY_URL is missing. Provide your OpenAI-compatible Vercel AI Gateway endpoint."
+            )
+        self.client = OpenAI(
+            api_key=gateway_api_key,
+            base_url=gateway_url.rstrip("/"),
+        )
+        self.model = self._validate_model(model)
+
+    @staticmethod
+    def _validate_model(model: Union[str, ModelId]) -> str:
+        """Ensure the selected model is one of the supported gateway options."""
+        model_value = _parse_model_arg(model) if isinstance(model, str) else model.value
+        if model_value not in SUPPORTED_MODELS:
+            raise ValueError(
+                f"Unsupported model '{model_value}'. Choose one of: {', '.join(SUPPORTED_MODELS)}."
+            )
+        return model_value
 
     def run_text_pipeline(self, text: str, source_type: str = "text") -> Dict[str, Any]:
         """Send raw text to the LLM and return structured event JSON.
@@ -295,17 +360,27 @@ class HarmonyStepZero:
 
         chat_api: Any = getattr(self.client, "chat", None)
         if chat_api is None:
-            raise RuntimeError("OpenAI client is missing the chat API surface.")
+            raise RuntimeError("LLM client is missing the chat API surface.")
         completions_api: Any = getattr(chat_api, "completions", None)
         if completions_api is None:
-            raise RuntimeError("OpenAI client is missing the chat.completions API.")
+            raise RuntimeError("LLM client is missing the chat.completions API.")
 
         resp_create: Any = completions_api.create  # pyright: ignore[reportGeneralTypeIssues]
-        response = resp_create(
-            model=self.model,
-            messages=messages,
-            response_format={"type": "json_object"},
-        )
+        create_kwargs = {
+            "model": self.model,
+            "messages": messages,
+        }
+        try:
+            # Some gateway-routed models reject response_format; fall back if so.
+            response = resp_create(
+                response_format={"type": "json_object"},
+                **create_kwargs,
+            )
+        except Exception as exc:
+            if "response_format" in str(exc):
+                response = resp_create(**create_kwargs)
+            else:
+                raise
         return self._response_to_json(response)
 
     def _process_ocr_text(self, ocr_text: str, source_type: str) -> Dict[str, Any]:
@@ -416,8 +491,20 @@ class HarmonyStepZero:
     def _response_to_json(response: Any) -> Dict[str, Any]:
         """Extract and parse JSON from ChatCompletion response."""
         raw_text = HarmonyStepZero._extract_output_text(response)
+        cleaned = raw_text.strip()
+
+        # Handle Markdown ```json fenced code blocks
+        if cleaned.startswith("```"):
+            # Remove leading ``` or ```json
+            first_newline = cleaned.find("\n")
+            if first_newline != -1:
+                cleaned = cleaned[first_newline + 1 :]
+            # Remove trailing ```
+            if cleaned.endswith("```"):
+                cleaned = cleaned[:-3].strip()
+
         try:
-            return json.loads(raw_text)
+            return json.loads(cleaned)
         except json.JSONDecodeError as exc:
             raise RuntimeError(
                 f"Model output was not valid JSON:\n{raw_text}"
@@ -501,11 +588,27 @@ class HarmonyStepZero:
         raise RuntimeError("Could not find text in the model response.")
 
 
+def _parse_model_arg(raw: str) -> str:
+    """Normalize CLI model input to a provider model ID."""
+    cleaned = raw.strip().lower()
+    if cleaned in MODEL_ALIASES:
+        return MODEL_ALIASES[cleaned]
+    raise argparse.ArgumentTypeError(
+        f"Unsupported model '{raw}'. Choose one of: "
+        f"{', '.join(sorted(set(MODEL_ALIASES.keys())))}"
+    )
+
+
 def build_cli() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Harmony Step 0: text/image to structured event JSON."
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
+    model_help = (
+        "Vercel AI Gateway model. Shorthands: gpt-5-mini|gpt5|5-mini, "
+        "gpt-4.1-mini|4.1-mini, gemini|google, grok|xai. "
+        f"Default: {DEFAULT_MODEL}."
+    )
 
     text_parser = subparsers.add_parser(
         "text", help="Parse a raw text message into structured event JSON."
@@ -517,8 +620,9 @@ def build_cli() -> argparse.ArgumentParser:
     )
     text_parser.add_argument(
         "--model",
-        default="gpt-5-mini",
-        help="Override the OpenAI model (default: gpt-5-mini).",
+        default=DEFAULT_MODEL,
+        type=_parse_model_arg,
+        help=model_help,
     )
 
     ocr_tess_parser = subparsers.add_parser(
@@ -532,8 +636,9 @@ def build_cli() -> argparse.ArgumentParser:
     )
     ocr_tess_parser.add_argument(
         "--model",
-        default="gpt-5-mini",
-        help="Override the OpenAI model (default: gpt-5-mini).",
+        default=DEFAULT_MODEL,
+        type=_parse_model_arg,
+        help=model_help,
     )
 
     ocr_easy_parser = subparsers.add_parser(
@@ -547,8 +652,9 @@ def build_cli() -> argparse.ArgumentParser:
     )
     ocr_easy_parser.add_argument(
         "--model",
-        default="gpt-5-mini",
-        help="Override the OpenAI model (default: gpt-5-mini).",
+        default=DEFAULT_MODEL,
+        type=_parse_model_arg,
+        help=model_help,
     )
 
     ocr_fusion_parser = subparsers.add_parser(
@@ -563,8 +669,9 @@ def build_cli() -> argparse.ArgumentParser:
     )
     ocr_fusion_parser.add_argument(
         "--model",
-        default="gpt-5-mini",
-        help="Override the OpenAI model (default: gpt-5-mini).",
+        default=DEFAULT_MODEL,
+        type=_parse_model_arg,
+        help=model_help,
     )
 
     return parser
