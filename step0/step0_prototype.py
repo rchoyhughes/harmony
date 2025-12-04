@@ -273,42 +273,38 @@ class HarmonyStepZero:
         if not text or not text.strip():
             raise ValueError("Cannot parse an empty text snippet.")
 
-        response_input = [
-            {
-                "role": "system",
-                "content": [{"type": "input_text", "text": SYSTEM_PROMPT}],
-            },
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": [
-                    {
-                        "type": "input_text",
-                        "text": dedent(
-                            f"""
-                            Source type: {source_type}
+                "content": dedent(
+                    f"""
+                    Source type: {source_type}
 
-                            Source message:
-                            \"\"\"{text.strip()}\"\"\"
+                    Source message:
+                    \"\"\"{text.strip()}\"\"\"
 
-                            Today's date: {today}
-                            Assume the user is in the timezone: {TIMEZONE}.
+                    Today's date: {today}
+                    Assume the user is in the timezone: {TIMEZONE}.
 
-                            Please respond with the JSON object now, following the JSON structure exactly.
-                            """
-                        ).strip(),
-                    }
-                ],
+                    Please respond with the JSON object now, following the JSON structure exactly.
+                    """
+                ).strip(),
             },
         ]
 
-        responses_api = getattr(self.client, "responses", None)
-        if responses_api is None:
-            raise RuntimeError("OpenAI client is missing the Responses API surface.")
+        chat_api: Any = getattr(self.client, "chat", None)
+        if chat_api is None:
+            raise RuntimeError("OpenAI client is missing the chat API surface.")
+        completions_api: Any = getattr(chat_api, "completions", None)
+        if completions_api is None:
+            raise RuntimeError("OpenAI client is missing the chat.completions API.")
 
-        response = responses_api.create(  # type: ignore[arg-type]
+        resp_create: Any = completions_api.create  # pyright: ignore[reportGeneralTypeIssues]
+        response = resp_create(
             model=self.model,
-            input=response_input,
-            text={"format": {"type": "json_object"}},
+            messages=messages,
+            response_format={"type": "json_object"},
         )
         return self._response_to_json(response)
 
