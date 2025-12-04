@@ -347,8 +347,11 @@ class HarmonyStepZero:
     def run_text_pipeline(self, text: str, source_type: str = "text") -> Dict[str, Any]:
         """Send raw text to the LLM and return structured event JSON.
 
-        source_type is either "text" (direct user text) or "ocr" (text extracted
-        from an image screenshot).
+        source_type is one of:
+            - "text"
+            - "ocr-tesseract"
+            - "ocr-easyocr"
+            - "ocr-fusion"
         """
         if not text or not text.strip():
             raise ValueError("Cannot parse an empty text snippet.")
