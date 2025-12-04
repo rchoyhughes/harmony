@@ -517,76 +517,39 @@ class HarmonyStepZero:
         """
         Extract text content from an OpenAI Responses payload, with a ChatCompletion fallback.
         """
-        output = getattr(response, "output", None)
-        if output:
-            text_chunks: list[str] = []
-            for item in output:
-                item_type = getattr(item, "type", None) or (
-                    item.get("type") if isinstance(item, dict) else None
-                )
-                if item_type != "output_text":
-                    continue
-                content = getattr(item, "content", None) or (
-                    item.get("content") if isinstance(item, dict) else None
-                )
-                if not content:
-                    continue
-                for chunk in content:
-                    chunk_type = getattr(chunk, "type", None) or (
-                        chunk.get("type") if isinstance(chunk, dict) else None
-                    )
-                    if chunk_type != "text":
-                        continue
-                    chunk_text = getattr(chunk, "text", None) or (
-                        chunk.get("text") if isinstance(chunk, dict) else None
-                    )
-                    value = None
-                    if isinstance(chunk_text, dict):
-                        value = chunk_text.get("value")
-                    elif isinstance(chunk_text, str):
-                        value = chunk_text
-                    if value:
-                        text_chunks.append(value)
-            if text_chunks:
-                return "".join(text_chunks)
-
-        output_text = getattr(response, "output_text", None)
-        if output_text:
-            if isinstance(output_text, str):
-                return output_text
-            if isinstance(output_text, Iterable):
-                collected = [str(part) for part in output_text if part]
-                if collected:
-                    return "".join(collected)
-
         choices = getattr(response, "choices", None)
-        if choices:
-            first_choice = choices[0]
-            message = getattr(first_choice, "message", None) or (
-                first_choice.get("message") if isinstance(first_choice, dict) else None
-            )
-            if message:
-                content = getattr(message, "content", None) or (
-                    message.get("content") if isinstance(message, dict) else None
-                )
-                if isinstance(content, str):
-                    return content
-                if isinstance(content, Iterable):
-                    chunks: list[str] = []
-                    for part in content:
-                        if not part:
-                            continue
-                        if isinstance(part, str):
-                            chunks.append(part)
-                            continue
-                        text_attr = getattr(part, "text", None)
-                        if text_attr:
-                            chunks.append(text_attr)
-                            continue
-                        if isinstance(part, dict):
-                            chunks.append(part.get("text", ""))
-                    if chunks:
-                        return "".join(chunks)
+        if not choices:
+            raise RuntimeError("Could not find text in the model response.")
+
+        first_choice = choices[0]
+        message = getattr(first_choice, "message", None) or (
+            first_choice.get("message") if isinstance(first_choice, dict) else None
+        )
+        if not message:
+            raise RuntimeError("Completion response missing message content.")
+
+        content = getattr(message, "content", None) or (
+            message.get("content") if isinstance(message, dict) else None
+        )
+        if isinstance(content, str):
+            return content
+        if isinstance(content, Iterable):
+            chunks: list[str] = []
+            for part in content:
+                if not part:
+                    continue
+                if isinstance(part, str):
+                    chunks.append(part)
+                    continue
+                text_attr = getattr(part, "text", None)
+                if text_attr:
+                    chunks.append(text_attr)
+                    continue
+                if isinstance(part, dict):
+                    chunks.append(part.get("text", ""))
+            if chunks:
+                return "".join(chunks)
+
         raise RuntimeError("Could not find text in the model response.")
 
 
@@ -597,10 +560,6 @@ def _parse_model_arg(raw: str) -> str:
         return MODEL_ALIASES[cleaned]
     # Fall back to exact string (for --model-string)
     return cleaned
-    raise argparse.ArgumentTypeError(
-        f"Unsupported model '{raw}'. Choose one of: "
-        f"{', '.join(sorted(set(MODEL_ALIASES.keys())))}"
-    )
 
 
 def build_cli() -> argparse.ArgumentParser:
