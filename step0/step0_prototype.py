@@ -60,11 +60,12 @@ class ModelId(str, Enum):
     OPENAI_GPT4_1_MINI = "openai/gpt-4.1-mini"
     GOOGLE_GEMINI_2_5_FLASH = "google/gemini-2.5-flash"
     XAI_GROK_4_1_FAST_REASONING = "xai/grok-4.1-fast-reasoning"
-    DEEPSEEK = "deepseek/deepseek-v3.2"
+    DEEPSEEK = "deepseek/deepseek-v3.2-thinking"
 
 
 DEFAULT_MODEL = ModelId.OPENAI_GPT5_MINI.value
-SUPPORTED_MODELS: tuple[str, ...] = tuple(m.value for m in ModelId)
+# SUPPORT_MODELS will be derived after MODEL_ALIASES is defined.
+SUPPORTED_MODELS: tuple[str, ...] = ()
 today = datetime.now(zoneinfo.ZoneInfo(TIMEZONE)).date().isoformat()
 
 # Shorthand-to-provider model aliases for CLI ergonomics
@@ -74,25 +75,32 @@ MODEL_ALIASES: Dict[str, str] = {
     "5-mini": ModelId.OPENAI_GPT5_MINI.value,
     "gpt5": ModelId.OPENAI_GPT5_MINI.value,
     "gpt5-mini": ModelId.OPENAI_GPT5_MINI.value,
-    ModelId.OPENAI_GPT5_MINI.value: ModelId.OPENAI_GPT5_MINI.value,
     # GPT-4.1-mini
     "gpt-4.1-mini": ModelId.OPENAI_GPT4_1_MINI.value,
     "4.1-mini": ModelId.OPENAI_GPT4_1_MINI.value,
     "gpt4.1-mini": ModelId.OPENAI_GPT4_1_MINI.value,
     "gpt4-mini": ModelId.OPENAI_GPT4_1_MINI.value,
-    ModelId.OPENAI_GPT4_1_MINI.value: ModelId.OPENAI_GPT4_1_MINI.value,
     # Gemini
     "gemini": ModelId.GOOGLE_GEMINI_2_5_FLASH.value,
     "google": ModelId.GOOGLE_GEMINI_2_5_FLASH.value,
-    ModelId.GOOGLE_GEMINI_2_5_FLASH.value: ModelId.GOOGLE_GEMINI_2_5_FLASH.value,
     # Grok
     "grok": ModelId.XAI_GROK_4_1_FAST_REASONING.value,
     "xai": ModelId.XAI_GROK_4_1_FAST_REASONING.value,
-    ModelId.XAI_GROK_4_1_FAST_REASONING.value: ModelId.XAI_GROK_4_1_FAST_REASONING.value,
-    # DeepSeek
+    # DeepSeek v3.2 Reasoning
     "deepseek": ModelId.DEEPSEEK.value,
-    ModelId.DEEPSEEK.value: ModelId.DEEPSEEK.value,
 }
+
+# Derive supported alias list (first alias per target) and allowed target IDs
+_seen_targets: set[str] = set()
+_primary_aliases: list[str] = []
+_allowed_targets: set[str] = set()
+for alias, target in MODEL_ALIASES.items():
+    if target not in _seen_targets:
+        _seen_targets.add(target)
+        _primary_aliases.append(alias)
+    _allowed_targets.add(target)
+SUPPORTED_MODELS = tuple(_primary_aliases)
+ALLOWED_MODEL_TARGETS = frozenset(_allowed_targets)
 
 QUOTE_CHARS = "'\"“”‘’"
 
@@ -322,8 +330,13 @@ class HarmonyStepZero:
         model: Union[str, ModelId], allow_unknown: bool = False
     ) -> str:
         """Ensure the selected model is one of the supported gateway options."""
-        model_value = _parse_model_arg(model) if isinstance(model, str) else model.value
-        if model_value not in SUPPORTED_MODELS and not allow_unknown:
+        if isinstance(model, ModelId):
+            model_value = model.value
+        else:
+            # At this point, --model has already been parsed to a provider ID by _parse_model_arg,
+            # and --model-string is passed through as-is. Avoid double-parsing.
+            model_value = str(model).strip()
+        if model_value not in ALLOWED_MODEL_TARGETS and not allow_unknown:
             raise ValueError(
                 f"Unsupported model '{model_value}'. Choose one of: {', '.join(SUPPORTED_MODELS)}."
             )
@@ -552,12 +565,15 @@ class HarmonyStepZero:
 
 
 def _parse_model_arg(raw: str) -> str:
-    """Normalize CLI model input to a provider model ID."""
+    """Normalize CLI model input to a provider model ID (aliases only)."""
     cleaned = raw.strip().lower()
     if cleaned in MODEL_ALIASES:
         return MODEL_ALIASES[cleaned]
-    # Fall back to exact string (for --model-string)
-    return cleaned
+    raise argparse.ArgumentTypeError(
+        f"Unsupported model alias '{raw}'. Use --model with one of: "
+        f"{', '.join(SUPPORTED_MODELS)} "
+        "or use --model-string for an exact provider ID."
+    )
 
 
 def build_cli() -> argparse.ArgumentParser:
@@ -569,8 +585,9 @@ def build_cli() -> argparse.ArgumentParser:
         "LLM model (shorthands) routed through your OpenAI-compatible endpoint "
         f"(default base_url: {DEFAULT_GATEWAY_URL}). "
         "Shorthands: gpt-5-mini|gpt5|5-mini, gpt-4.1-mini|4.1-mini, "
-        "gemini|google, grok|xai, deepseek|r1. "
-        f"Default model: {DEFAULT_MODEL}."
+        "gemini|google, grok|xai, deepseek. "
+        f"Default model: {DEFAULT_MODEL}. "
+        "Use --model-string for any provider ID not covered by these aliases."
     )
     model_string_help = (
         "Exact provider model ID (bypasses shorthands), e.g. openai/gpt-5-nano "
