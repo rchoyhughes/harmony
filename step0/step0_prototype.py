@@ -90,8 +90,8 @@ MODEL_ALIASES: Dict[str, str] = {
     "xai": ModelId.XAI_GROK_4_1_FAST_REASONING.value,
     ModelId.XAI_GROK_4_1_FAST_REASONING.value: ModelId.XAI_GROK_4_1_FAST_REASONING.value,
     # DeepSeek
-    "deepseek": ModelId.DEEPSEEK_R1.value,
-    ModelId.DEEPSEEK_R1.value: ModelId.DEEPSEEK_R1.value,
+    "deepseek": ModelId.DEEPSEEK.value,
+    ModelId.DEEPSEEK.value: ModelId.DEEPSEEK.value,
 }
 
 QUOTE_CHARS = "'\"“”‘’"
