@@ -63,7 +63,9 @@ class ModelId(str, Enum):
     DEEPSEEK = "deepseek/deepseek-v3.2-thinking"
 
 
-DEFAULT_MODEL = ModelId.OPENAI_GPT5_MINI.value
+DEFAULT_MODEL_ALIAS = "gpt-5-mini"
+DEFAULT_MODEL_ID = ModelId.OPENAI_GPT5_MINI.value
+DEFAULT_MODEL = DEFAULT_MODEL_ID
 # SUPPORT_MODELS will be derived after MODEL_ALIASES is defined.
 SUPPORTED_MODELS: tuple[str, ...] = ()
 today = datetime.now(zoneinfo.ZoneInfo(TIMEZONE)).date().isoformat()
@@ -306,7 +308,7 @@ class HarmonyStepZero:
 
     def __init__(
         self,
-        model: Union[str, ModelId] = DEFAULT_MODEL,
+        model: Union[str, ModelId] = DEFAULT_MODEL_ID,
         allow_unknown_model: bool = False,
     ) -> None:
         # Load .env from project root (one level up from step0/)
@@ -586,7 +588,7 @@ def build_cli() -> argparse.ArgumentParser:
         f"(default base_url: {DEFAULT_GATEWAY_URL}). "
         "Shorthands: gpt-5-mini|gpt5|5-mini, gpt-4.1-mini|4.1-mini, "
         "gemini|google, grok|xai, deepseek. "
-        f"Default model: {DEFAULT_MODEL}. "
+        f"Default model: {DEFAULT_MODEL_ALIAS} ({DEFAULT_MODEL_ID}). "
         "Use --model-string for any provider ID not covered by these aliases."
     )
     model_string_help = (
@@ -605,7 +607,7 @@ def build_cli() -> argparse.ArgumentParser:
     model_group = text_parser.add_mutually_exclusive_group()
     model_group.add_argument(
         "--model",
-        default=DEFAULT_MODEL,
+        default=DEFAULT_MODEL_ALIAS,
         type=_parse_model_arg,
         help=model_help,
     )
@@ -627,7 +629,7 @@ def build_cli() -> argparse.ArgumentParser:
     tess_model_group = ocr_tess_parser.add_mutually_exclusive_group()
     tess_model_group.add_argument(
         "--model",
-        default=DEFAULT_MODEL,
+        default=DEFAULT_MODEL_ALIAS,
         type=_parse_model_arg,
         help=model_help,
     )
@@ -649,7 +651,7 @@ def build_cli() -> argparse.ArgumentParser:
     easy_model_group = ocr_easy_parser.add_mutually_exclusive_group()
     easy_model_group.add_argument(
         "--model",
-        default=DEFAULT_MODEL,
+        default=DEFAULT_MODEL_ALIAS,
         type=_parse_model_arg,
         help=model_help,
     )
@@ -672,7 +674,7 @@ def build_cli() -> argparse.ArgumentParser:
     fusion_model_group = ocr_fusion_parser.add_mutually_exclusive_group()
     fusion_model_group.add_argument(
         "--model",
-        default=DEFAULT_MODEL,
+        default=DEFAULT_MODEL_ALIAS,
         type=_parse_model_arg,
         help=model_help,
     )

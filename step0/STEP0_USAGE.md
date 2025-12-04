@@ -43,7 +43,7 @@ You can parse text either by passing it inline or by entering it interactively:
 python step0_prototype.py text "Tim: Wanna do dinner at 7 next Tuesday at Garden Carver?"
 ```
 
-Add `--model` to select a model via shorthands (default: `openai/gpt-5-mini`). Shorthands: `gpt-5-mini`/`gpt5`/`5-mini`, `gpt-4.1-mini`/`4.1-mini`, `gemini`/`google`, `grok`/`xai`, `deepseek`/`r1`.
+Add `--model` to select a model via shorthands (default: `openai/gpt-5-mini`). Shorthands: `gpt-5-mini`/`gpt5`/`5-mini`, `gpt-4.1-mini`/`4.1-mini`, `gemini`/`google`, `grok`/`xai`, `deepseek`.
 
 Use `--model-string` to pass an exact provider model ID (bypasses shorthands), e.g. `openai/gpt-5-nano` or `deepseek/deepseek-chat`. Both flags route through your configured OpenAI-compatible base URL.
 
