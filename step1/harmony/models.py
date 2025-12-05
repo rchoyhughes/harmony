@@ -100,6 +100,9 @@ class ImageParseResponse(BaseModel):
 
 def resolve_model_choice(model: Optional[str], model_string: Optional[str]) -> str:
     """Return a provider model ID from either a shorthand alias or explicit string."""
+    if model is not None and model_string is not None:
+        raise ValueError("Specify either model or model_string, not both.")
+
     if model_string is not None:
         cleaned = model_string.strip()
         if not cleaned:

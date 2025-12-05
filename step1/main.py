@@ -42,8 +42,8 @@ def parse_text(request: TextParseRequest):
 async def parse_image(
     file: UploadFile = File(...),
     ocr_mode: OCRMode = Query(
-        OCRMode.TESSERACT,
-        description="ocr-tesseract | ocr-easyocr | ocr-fusion",
+        OCRMode.FUSION,
+        description="ocr-tesseract | ocr-easyocr | ocr-fusion (default fusion)",
     ),
     model: str | None = Query(
         None, description="Model shorthand alias (e.g., gpt-5-mini, gemini)."

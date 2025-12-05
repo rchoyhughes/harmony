@@ -27,8 +27,8 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ## API
-- `POST /parse/text` — JSON body: `{ "text": "...", "model": "gpt-5-mini", "model_string": "openai/gpt-5-mini" }` (`model_string` takes precedence; `model` uses shorthands). Response: `{ "event": { ...LLM JSON... } }`.
-- `POST /parse/image` — multipart form: file upload field `file`; query params `ocr_mode` (`ocr-tesseract` | `ocr-easyocr` | `ocr-fusion`), optional `model`, `model_string`. Response: `{ "ocr_text": "...", "event": { ...LLM JSON... } }`.
+- `POST /parse/text` — JSON body: `{ "text": "...", "model": "gpt-5-mini", "model_string": "openai/gpt-5-mini" }` (`model_string` takes precedence; `model` uses shorthands, default is `gpt-5-mini`; they are mutually exclusive). Response: `{ "event": { ...LLM JSON... } }`.
+- `POST /parse/image` — multipart form: file upload field `file`; query params `ocr_mode` (`ocr-tesseract` | `ocr-easyocr` | `ocr-fusion`, default `ocr-fusion`), optional `model`, `model_string` (default `gpt-5-mini`; mutually exclusive). Response: `{ "ocr_text": "...", "event": { ...LLM JSON... } }`.
 
 ## CLI
 From `/Users/rchoyhughes/projects/harmony/step1`:
