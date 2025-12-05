@@ -48,7 +48,7 @@ def extract_text_with_easyocr(image_path: Path) -> str:
     if not expanded_path.exists():
         raise FileNotFoundError(f"Image not found: {expanded_path}")
 
-    reader = easyocr.Reader(["en"], gpu=True)
+    reader = easyocr.Reader(["en"], gpu=False)
     result = reader.readtext(str(expanded_path), detail=0)
     cleaned = "\n".join(line.strip() for line in result if line.strip())
     if not cleaned:
