@@ -6,8 +6,8 @@ from typing import Any, Dict, Iterable
 
 from openai import OpenAI  # type: ignore[import]
 
-from .config import Settings
-from .prompts import SYSTEM_PROMPT
+from harmony_engine.config import Settings
+from harmony_engine.prompts import SYSTEM_PROMPT
 
 
 class LLMClient:

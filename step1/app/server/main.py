@@ -2,20 +2,20 @@ from __future__ import annotations
 
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 
-from harmony.config import Settings
-from harmony.models import (
+from app.harmony_engine.config import Settings
+from app.harmony_engine.models import (
     ImageParseResponse,
     OCRMode,
     TextParseRequest,
     TextParseResponse,
 )
-from harmony.pipeline import HarmonyPipeline
+from app.harmony_engine.parsing import HarmonyPipeline
 
-settings = Settings()
+settings = Settings()  # type: ignore[call-arg]  # Pydantic BaseSettings accepts env/.env
 pipeline = HarmonyPipeline(settings)
 
 app = FastAPI(
-    title="Harmony Step 1",
+    title="Harmony Step 1 Server",
     description="Text/OCR to structured event JSON (FastAPI)",
     version="0.1.0",
 )

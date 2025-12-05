@@ -7,9 +7,9 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from harmony.config import Settings
-from harmony.models import DEFAULT_MODEL_ALIAS, OCRMode
-from harmony.pipeline import HarmonyPipeline
+from app.harmony_engine.config import Settings
+from app.harmony_engine.models import DEFAULT_MODEL_ALIAS, OCRMode
+from app.harmony_engine.parsing import HarmonyPipeline
 
 
 QUOTE_CHARS = "'\"“”‘’"
@@ -36,7 +36,7 @@ def _resolve_image_path(arg_path: Optional[Path], prompt_label: str) -> Path:
 
 def build_cli() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Harmony Step 1: text/image to structured event JSON."
+        description="Harmony Step 1 Server: text/image to structured event JSON."
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
     model_help = (
@@ -113,7 +113,7 @@ def main(argv: Optional[list[str]] = None) -> None:
     parser = build_cli()
     args = parser.parse_args(argv)
 
-    settings = Settings()
+    settings = Settings()  # type: ignore[call-arg]  # Pydantic BaseSettings accepts env/.env
     pipeline = HarmonyPipeline(settings)
 
     try:
