@@ -1,0 +1,11 @@
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+openai>=1.44.0
+python-dotenv>=1.0.1
+pillow>=11.0.0
+pytesseract>=0.3.10
+easyocr>=1.7.1
+pydantic>=2.7.0
+pydantic-settings>=2.7.0
+python-multipart>=0.0.9
+

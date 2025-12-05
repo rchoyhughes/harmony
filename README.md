@@ -118,17 +118,19 @@ Phase 0: Python Prototype **(current)**
 
 - no UI, no iOS
 
-Phase 1: iOS Skeleton
+Phase 1: Web Server + iOS Skeleton
 
-- share extension
+- publish Harmony prototype and expose API endpoints
 
-- dummy suggestion list
+- share extension in iOS skeleton
+
+- JSON parsing in iOS skeleton
 
 - calendar write
 
 Phase 2: OCR and parsing
 
-- Vision integration (OCR)
+- on-device Vision integration (OCR)
 
 - LLM endpoint
 
