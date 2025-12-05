@@ -6,7 +6,7 @@ from typing import Any, Dict, Iterable
 
 from openai import OpenAI  # type: ignore[import]
 
-from harmony_engine.config import Settings
+from harmony_engine.core.config import Settings
 from harmony_engine.prompts import SYSTEM_PROMPT
 
 

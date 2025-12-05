@@ -2,14 +2,13 @@ from __future__ import annotations
 
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 
-from app.harmony_engine.config import Settings
-from app.harmony_engine.models import (
+from app.harmony_engine import HarmonyPipeline, Settings
+from app.harmony_engine.core.models import (
     ImageParseResponse,
     OCRMode,
     TextParseRequest,
     TextParseResponse,
 )
-from app.harmony_engine.parsing import HarmonyPipeline
 
 settings = Settings()  # type: ignore[call-arg]  # Pydantic BaseSettings accepts env/.env
 pipeline = HarmonyPipeline(settings)

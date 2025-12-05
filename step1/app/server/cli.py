@@ -7,9 +7,8 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from app.harmony_engine.config import Settings
-from app.harmony_engine.models import DEFAULT_MODEL_ALIAS, OCRMode
-from app.harmony_engine.parsing import HarmonyPipeline
+from app.harmony_engine import HarmonyPipeline, Settings
+from app.harmony_engine.core.models import DEFAULT_MODEL_ALIAS, OCRMode
 
 
 QUOTE_CHARS = "'\"“”‘’"

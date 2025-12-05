@@ -8,9 +8,9 @@ from typing import Any, Dict
 
 from PIL import Image  # type: ignore[import]
 
-from harmony_engine.config import Settings
+from harmony_engine.core.config import Settings
 from harmony_engine.llm import LLMClient
-from harmony_engine.models import OCRMode, resolve_model_choice
+from harmony_engine.core.models import OCRMode, resolve_model_choice
 from harmony_engine.ocr import (
     EASYOCR_AVAILABLE,
     extract_text_with_easyocr,
