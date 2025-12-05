@@ -5,7 +5,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-DEFAULT_MODEL_ALIAS = "gpt-5-mini"
+DEFAULT_MODEL_ALIAS = "gemini"
 
 
 class ModelId(str, Enum):
@@ -18,7 +18,7 @@ class ModelId(str, Enum):
     DEEPSEEK = "deepseek/deepseek-v3.2-thinking"
 
 
-DEFAULT_MODEL_ID = ModelId.OPENAI_GPT5_MINI.value
+DEFAULT_MODEL_ID = ModelId.GOOGLE_GEMINI_2_5_FLASH.value
 
 # Shorthand-to-provider model aliases for ergonomics
 MODEL_ALIASES: dict[str, str] = {
