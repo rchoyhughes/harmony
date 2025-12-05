@@ -1,9 +1,16 @@
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 
-from app.harmony_engine import HarmonyPipeline, Settings
-from app.harmony_engine.core.models import (
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.append(str(PROJECT_ROOT))
+
+from app.harmony_engine import HarmonyPipeline, Settings  # noqa: E402
+from app.harmony_engine.core.models import (  # noqa: E402
     ImageParseResponse,
     OCRMode,
     TextParseRequest,

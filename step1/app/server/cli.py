@@ -7,6 +7,11 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+# Ensure the project root (step1) is on sys.path so "app" is importable when run from app/server
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.append(str(PROJECT_ROOT))
+
 from app.harmony_engine import HarmonyPipeline, Settings
 from app.harmony_engine.core.models import DEFAULT_MODEL_ALIAS, OCRMode
 

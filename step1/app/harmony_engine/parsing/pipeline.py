@@ -8,13 +8,13 @@ from typing import Any, Dict
 
 from PIL import Image  # type: ignore[import]
 
-from harmony_engine.core.config import Settings  # type: ignore[import]
-from harmony_engine.llm import LLMClient  # type: ignore[import]
-from harmony_engine.core.models import (  # type: ignore[import]
+from app.harmony_engine.core.config import Settings  # type: ignore[import]
+from app.harmony_engine.llm import LLMClient  # type: ignore[import]
+from app.harmony_engine.core.models import (  # type: ignore[import]
     OCRMode,
     resolve_model_choice,
 )
-from harmony_engine.ocr import (  # type: ignore[import]
+from app.harmony_engine.ocr import (  # type: ignore[import]
     EASYOCR_AVAILABLE,
     extract_text_with_easyocr,
     extract_text_with_tesseract,

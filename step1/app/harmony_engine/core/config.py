@@ -6,8 +6,8 @@ import zoneinfo
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Deployable root (step1/) so .env travels with the server + engine bundle
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+# Deployable root (step1/app) so .env travels with the server + engine bundle
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ENV_PATH = PROJECT_ROOT / ".env"
 DEFAULT_GATEWAY_URL = "https://ai-gateway.vercel.sh/v1"
 DEFAULT_TIMEZONE = "America/New_York"
