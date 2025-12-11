@@ -271,7 +271,7 @@ private extension Data {
 }
 
 struct ContentView: View {
-    @State private var serverURLString = "http://3.138.110.196:8000"
+    @State private var serverURLString = "https://api.harmo.nyc"
     @State private var selectedModel: ModelChoice = .geminiFlash
     @State private var selectedOCR: OCRMode = .fusion
     @State private var selectedItem: PhotosPickerItem?
