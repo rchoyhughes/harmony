@@ -30,6 +30,7 @@ private enum ModelChoice: String, CaseIterable, Identifiable {
     case geminiFlash = "google/gemini-2.5-flash"
     case grok41Fast = "xai/grok-4.1-fast-reasoning"
     case deepseek = "deepseek/deepseek-v3.2-thinking"
+    case custom = "__custom__"
 
     var id: String { rawValue }
     var displayName: String {
@@ -39,8 +40,11 @@ private enum ModelChoice: String, CaseIterable, Identifiable {
         case .geminiFlash: return "gemini-2.5-flash"
         case .grok41Fast: return "grok-4.1-fast-reasoning"
         case .deepseek: return "deepseek-v3.2-thinking"
+        case .custom: return "Custom model_string…"
         }
     }
+
+    var isCustom: Bool { self == .custom }
 }
 
 private enum HarmonyClientError: LocalizedError {
@@ -280,6 +284,7 @@ private extension Data {
 struct ContentView: View {
     @State private var serverURLString = "https://api.harmo.nyc"
     @State private var selectedModel: ModelChoice = .geminiFlash
+    @State private var customModelString: String = ""
     @State private var selectedOCR: OCRMode = .fusion
     @State private var selectedItem: PhotosPickerItem?
     @State private var imagePreview: UIImage?
@@ -343,6 +348,22 @@ struct ContentView: View {
                             }
                         }
                         .pickerStyle(.menu)
+
+                        if selectedModel.isCustom {
+                            TextField(
+                                "provider/model-id (e.g., google/gemini-2.5-flash)",
+                                text: $customModelString
+                            )
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .padding(10)
+                            .background(Color(.secondarySystemBackground))
+                            .cornerRadius(8)
+
+                            Text("This is sent as the server’s `model_string` query param.")
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                        }
                     }
 
                     VStack(alignment: .leading, spacing: 8) {
@@ -475,6 +496,20 @@ struct ContentView: View {
             statusText = "Image required."
             return
         }
+
+        let modelString: String = {
+            if selectedModel.isCustom {
+                return customModelString.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            return selectedModel.rawValue
+        }()
+
+        if modelString.isEmpty {
+            errorText = "Enter a custom model_string (e.g., google/gemini-2.5-flash)."
+            statusText = "Model required."
+            return
+        }
+
         isSending = true
         statusText = "Uploading..."
         responseText = nil
@@ -485,7 +520,7 @@ struct ContentView: View {
                 let client = try HarmonyClient(baseURLString: serverURLString)
                 let response = try await client.uploadImage(
                     data: imageData,
-                    modelString: selectedModel.rawValue,
+                    modelString: modelString,
                     ocrMode: selectedOCR
                 )
                 let formatted = """
@@ -497,7 +532,8 @@ struct ContentView: View {
                 """
                 await MainActor.run {
                     responseText = formatted
-                    statusText = "Success with \(selectedOCR.rawValue) via \(selectedModel.displayName)."
+                    let modelLabel = selectedModel.isCustom ? modelString : selectedModel.displayName
+                    statusText = "Success with \(selectedOCR.rawValue) via \(modelLabel)."
                 }
             } catch {
                 await MainActor.run {
