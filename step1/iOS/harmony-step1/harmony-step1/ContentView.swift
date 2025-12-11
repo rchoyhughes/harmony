@@ -188,6 +188,13 @@ private struct HarmonyClient {
         }
         self.baseURL = url
     }
+    
+    private let longTimeoutSession: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 240   // 4 minutes
+        config.timeoutIntervalForResource = 240  // 4 minutes
+        return URLSession(configuration: config)
+    }()
 
     func uploadImage(
         data: Data,
@@ -213,7 +220,7 @@ private struct HarmonyClient {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.httpBody = makeMultipartBody(data: data, boundary: boundary)
 
-        let (responseData, response) = try await URLSession.shared.data(for: request)
+        let (responseData, response) = try await self.longTimeoutSession.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse else {
             throw HarmonyClientError.invalidResponse
         }
